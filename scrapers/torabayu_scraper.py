@@ -7,9 +7,6 @@ import random
 import html
 import re
 import pandas as pd
-import os
-import gspread
-from google.oauth2 import service_account
 
 class TorabayuScraper:
     """とらばーゆ求人サイトのスクレイパー（地域対応）"""
@@ -650,9 +647,6 @@ class TorabayuUI:
                 
                 df = pd.DataFrame(df_data)
                 
-                # Google Sheetsエクスポート機能
-                self.render_google_sheets_export(job_list)
-                
                 return df
         
         else:
@@ -660,150 +654,3 @@ class TorabayuUI:
                 st.info("職種名や施設名を入力して求人を探してください。")
             return None
     
-    def render_google_sheets_export(self, job_list):
-        """Google Sheetsエクスポート機能を描画"""
-        st.subheader("📊 Google Sheetsへエクスポート")
-        
-        # スプレッドシートURL入力
-        spreadsheet_url = st.text_input(
-            "Google SheetsのURL",
-            placeholder="https://docs.google.com/spreadsheets/d/your-sheet-id/edit",
-            key=f"torabayu_{self.region}_sheets_url"
-        )
-        
-        if spreadsheet_url:
-            # シート名入力
-            region_name = self.region_names.get(self.region, self.region)
-            sheet_name = st.text_input(
-                "シート名",
-                value=f"とらばーゆ{region_name}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}",
-                key=f"torabayu_{self.region}_sheet_name"
-            )
-            
-            # エクスポートボタン
-            if st.button("📤 Google Sheetsにエクスポート", type="secondary", key=f"torabayu_{self.region}_export"):
-                with st.spinner("Google Sheetsに出力中..."):
-                    success, message = self.export_to_google_sheets(job_list, spreadsheet_url, sheet_name)
-                    
-                    if success:
-                        st.success(message)
-                    else:
-                        st.error(message)
-        else:
-            st.info("📋 Google SheetsのURLを入力してください。")
-    
-    def export_to_google_sheets(self, job_list, spreadsheet_url, sheet_name=None):
-        """Google Sheetsにデータをエクスポート"""
-        try:
-            # 認証設定
-            credentials_path = "credentials/service_account.json"
-            
-            # 認証ファイルが存在するか確認
-            if not os.path.exists(credentials_path):
-                return False, "Google APIの認証ファイルが見つかりません。credentials/service_account.jsonを配置してください。"
-            
-            # Google APIの認証情報を読み込む
-            credentials = service_account.Credentials.from_service_account_file(
-                credentials_path,
-                scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-            )
-            
-            # Google Sheetsに接続
-            client = gspread.authorize(credentials)
-            
-            # スプレッドシートのURLから対象を取得
-            try:
-                spreadsheet = client.open_by_url(spreadsheet_url)
-            except Exception as e:
-                return False, f"スプレッドシートを開けませんでした: {str(e)}"
-            
-            # シート名が指定されていない場合は新しいシートを作成
-            if not sheet_name:
-                region_name = self.region_names.get(self.region, self.region)
-                sheet_name = f"とらばーゆ{region_name}_{time.strftime('%Y%m%d_%H%M%S')}"
-            
-            try:
-                worksheet = spreadsheet.worksheet(sheet_name)
-            except Exception:
-                # 指定したシートが存在しない場合は新規作成
-                try:
-                    worksheet = spreadsheet.add_worksheet(title=sheet_name, rows=1000, cols=20)
-                except Exception as e:
-                    return False, f"シートを取得または作成できませんでした: {str(e)}"
-            
-            # ヘッダー行を設定
-            headers = [
-                "施設名", "代表者名", "勤務地", "求人URL", "電話番号", "メールアドレス", "業務内容"
-            ]
-            
-            # シートをクリアして新しいデータを書き込む
-            worksheet.clear()
-            worksheet.append_row(headers)
-            
-            # データ行の作成
-            data_rows = []
-            for job in job_list:
-                # データクリーニング
-                representative = job.get('representative', '')
-                if representative:
-                    representative = re.sub(r'所在住所.*$', '', representative)
-                    representative = re.sub(r'住所.*$', '', representative)
-                    representative = re.sub(r'[0-9０-９]{5,}.*$', '', representative)
-                    representative = re.sub(r'代表電話.*$', '', representative)
-                    representative = representative.strip()
-                
-                location = job.get('location', '')
-                if location:
-                    location = re.sub(r'^勤務地[：:]\s*', '', location)
-                    location = re.sub(r'代表電話.*$', '', location)
-                    location = re.sub(r'事業内容.*$', '', location)
-                    location = location.strip()
-                
-                phone_number = job.get('phone_number', '')
-                if phone_number and phone_number != "情報なし":
-                    phone_number = re.sub(r'[^\d\-\(\)]', '', phone_number).strip()
-                else:
-                    phone_number = ""
-                
-                row = [
-                    job.get('facility_name', ''),
-                    representative,
-                    location,
-                    job.get('source_url', ''),
-                    phone_number,
-                    "",  # メールアドレス（今回は空）
-                    job.get('job_description', '')
-                ]
-                data_rows.append(row)
-            
-            # バッチで書き込み
-            if data_rows:
-                worksheet.append_rows(data_rows)
-                
-                # 列幅の調整（可能な場合）
-                try:
-                    worksheet.update_column_properties('A', {"pixelSize": 200})  # 施設名
-                    worksheet.update_column_properties('B', {"pixelSize": 150})  # 代表者名
-                    worksheet.update_column_properties('C', {"pixelSize": 300})  # 勤務地
-                    worksheet.update_column_properties('D', {"pixelSize": 250})  # 求人URL
-                    worksheet.update_column_properties('E', {"pixelSize": 150})  # 電話番号
-                    worksheet.update_column_properties('F', {"pixelSize": 150})  # メールアドレス
-                    worksheet.update_column_properties('G', {"pixelSize": 500})  # 業務内容
-                except Exception:
-                    pass  # 列幅設定に失敗しても続行
-                
-                # ヘッダー行のスタイル設定（可能な場合）
-                try:
-                    header_format = {
-                        "backgroundColor": {"red": 0.8, "green": 0.8, "blue": 0.8},
-                        "horizontalAlignment": "CENTER",
-                        "textFormat": {"bold": True}
-                    }
-                    worksheet.format('A1:G1', header_format)
-                except Exception:
-                    pass  # フォーマット設定に失敗しても続行
-            
-            return True, f"データを '{sheet_name}' シートに正常に保存しました。"
-        
-        except Exception as e:
-            return False, f"エラーが発生しました: {str(e)}"

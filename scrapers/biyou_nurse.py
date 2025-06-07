@@ -320,15 +320,7 @@ class BiyouNurseUI:
                 job_data['電話番号'] = ""
                 job_data['メールアドレス'] = ""
                 
-                # 詳細URLから求人Noを抽出（内部管理用）
-                job_data['求人No'] = ""
-                if job_data['WebサイトURL']:
-                    match = re.search(r'joboffer_no=(\d+)', job_data['WebサイトURL'])
-                    if match:
-                        job_data['求人No'] = match.group(1)
-                
-                # 情報源サイト名（内部管理用）
-                job_data['情報源サイト名'] = "美容ナース.com"
+
                 
                 # データが空でない場合のみ追加
                 if job_data['施設名']:

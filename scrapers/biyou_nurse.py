@@ -81,6 +81,9 @@ class BiyouNurseUI:
         """美容ナース.com専用のUIを表示"""
         st.header("美容ナース.com：検索条件")
         
+        # デバッグモード
+        debug_mode = st.sidebar.checkbox("デバッグモード", key="biyou_debug")
+        
         # 検索オプションを取得（キャッシュ）
         if not st.session_state.biyou_search_options:
             with st.spinner("検索条件を読み込み中..."):
@@ -252,7 +255,7 @@ class BiyouNurseUI:
             return {"error": f"予期しないエラーが発生しました: {str(e)}"}
     
     def extract_jobs_from_page(self, soup):
-        """1ページ分の求人情報を抽出"""
+        """1ページ分の求人情報を抽出（新しいヘッダー順序対応）"""
         jobs = []
         
         # 求人リストを取得（実際のHTMLから確認済み）
@@ -266,63 +269,69 @@ class BiyouNurseUI:
             try:
                 job_data = {}
                 
-                # タイトル
+                # タイトル（事業内容の一部として使用）
                 title_elem = item.find('h2')
-                job_data['タイトル'] = title_elem.get_text(strip=True) if title_elem else ""
+                title = title_elem.get_text(strip=True) if title_elem else ""
                 
                 # クリニック名と勤務地
                 clinic_elem = item.find('p', class_='clinick_name')
                 if clinic_elem:
-                    # 地域を抽出
+                    # 地域を抽出（住所として使用）
                     area_elem = clinic_elem.find('span', class_='cate')
-                    job_data['勤務地'] = area_elem.get_text(strip=True) if area_elem else ""
+                    job_data['住所'] = area_elem.get_text(strip=True) if area_elem else ""
                     
-                    # クリニック名を抽出（span.cate の後のテキスト）
+                    # クリニック名を抽出（施設名として使用）
                     clinic_text = clinic_elem.get_text(strip=True)
                     if area_elem:
                         area_text = area_elem.get_text(strip=True)
                         clinic_name = clinic_text.replace(area_text, '').strip()
-                        job_data['クリニック名'] = clinic_name
+                        job_data['施設名'] = clinic_name
                     else:
-                        job_data['クリニック名'] = clinic_text
+                        job_data['施設名'] = clinic_text
                 else:
-                    job_data['クリニック名'] = ""
-                    job_data['勤務地'] = ""
+                    job_data['施設名'] = ""
+                    job_data['住所'] = ""
                 
-                # 詳細ページURL
+                # WebサイトURL（詳細ページURL）
                 detail_link = item.find('a', href=re.compile(r'/job/detail/'))
                 if detail_link and detail_link.get('href'):
-                    job_data['詳細ページURL'] = urljoin(self.BASE_URL, detail_link.get('href'))
+                    job_data['WebサイトURL'] = urljoin(self.BASE_URL, detail_link.get('href'))
                 else:
-                    job_data['詳細ページURL'] = ""
+                    job_data['WebサイトURL'] = ""
                 
-                # メインの施術
+                # メインの施術（事業内容の一部として使用）
                 procedure_elem = item.find('dl')
                 if procedure_elem:
                     dd_elem = procedure_elem.find('dd')
-                    job_data['メインの施術'] = dd_elem.get_text(strip=True) if dd_elem else ""
+                    procedure = dd_elem.get_text(strip=True) if dd_elem else ""
                 else:
-                    job_data['メインの施術'] = ""
+                    procedure = ""
                 
-                # 基本フィールドの初期化
-                default_fields = ['求人No', '職種', '施設', '業務 (働き方)', '給与', '交通']
-                for field in default_fields:
-                    job_data[field] = ""
+                # 事業内容（タイトル + メインの施術）
+                event_content_parts = []
+                if title:
+                    event_content_parts.append(title)
+                if procedure:
+                    event_content_parts.append(f"主な施術: {procedure}")
+                job_data['事業内容'] = " | ".join(event_content_parts) if event_content_parts else ""
                 
-                # 詳細URLから求人Noを抽出
-                if job_data['詳細ページURL']:
-                    match = re.search(r'joboffer_no=(\d+)', job_data['詳細ページURL'])
+                # 初期化（詳細取得で更新される）
+                job_data['代表者名'] = ""
+                job_data['電話番号'] = ""
+                job_data['メールアドレス'] = ""
+                
+                # 詳細URLから求人Noを抽出（内部管理用）
+                job_data['求人No'] = ""
+                if job_data['WebサイトURL']:
+                    match = re.search(r'joboffer_no=(\d+)', job_data['WebサイトURL'])
                     if match:
                         job_data['求人No'] = match.group(1)
                 
-                # 職種は「看護師」で固定
-                job_data['職種'] = "看護師"
-                
-                # 情報源サイト名
+                # 情報源サイト名（内部管理用）
                 job_data['情報源サイト名'] = "美容ナース.com"
                 
                 # データが空でない場合のみ追加
-                if job_data['タイトル'] or job_data['クリニック名']:
+                if job_data['施設名']:
                     jobs.append(job_data)
                 
             except Exception as e:
@@ -349,17 +358,25 @@ class BiyouNurseUI:
             status_text.info(f"詳細情報を取得中: {i+1}/{total_jobs} ({progress*100:.1f}%) - {facility_name}")
             
             # 詳細ページから情報を取得
-            detail_info = self.get_job_details(job.get('詳細ページURL', ''))
+            detail_info = self.get_job_details(job.get('WebサイトURL', ''))
             
-            # Web検索で連絡先情報を取得（オプション）
-            if detail_info.get('施設名'):
+            # Web検索で連絡先情報を取得（電話番号・メールアドレスが空の場合のみ）
+            facility_name = detail_info.get('施設名') or job.get('施設名', '')
+            if facility_name and (not detail_info.get('電話番号') or not detail_info.get('メールアドレス')):
                 try:
-                    contact_info = self.search_contact_info_advanced(detail_info['施設名'])
-                    detail_info.update(contact_info)
+                    contact_info = self.search_contact_info_advanced(facility_name)
+                    # 空の項目のみ更新
+                    if not detail_info.get('電話番号') and contact_info.get('電話番号'):
+                        detail_info['電話番号'] = contact_info['電話番号']
+                    if not detail_info.get('メールアドレス') and contact_info.get('メールアドレス'):
+                        detail_info['メールアドレス'] = contact_info['メールアドレス']
                 except:
                     # エラー時は基本的な連絡先検索を使用
-                    contact_info = self.search_contact_info(detail_info['施設名'])
-                    detail_info.update(contact_info)
+                    contact_info = self.search_contact_info(facility_name)
+                    if not detail_info.get('電話番号') and contact_info.get('電話番号'):
+                        detail_info['電話番号'] = contact_info['電話番号']
+                    if not detail_info.get('メールアドレス') and contact_info.get('メールアドレス'):
+                        detail_info['メールアドレス'] = contact_info['メールアドレス']
             
             # 元の求人情報と詳細情報を統合
             job.update(detail_info)
@@ -380,12 +397,15 @@ class BiyouNurseUI:
         return enriched_jobs
 
     def get_job_details(self, detail_url):
-        """詳細ページから情報を抽出"""
+        """詳細ページから情報を抽出（新しいヘッダー順序対応）"""
         detail_info = {
             '施設名': '',
             '代表者名': '',
-            '所在地': '',
-            '仕事の内容': ''
+            '住所': '',
+            'WebサイトURL': '',
+            '電話番号': '',
+            'メールアドレス': '',
+            '事業内容': ''
         }
         
         if not detail_url:
@@ -426,14 +446,23 @@ class BiyouNurseUI:
                         if header == '院名':
                             detail_info['施設名'] = value
                         elif header == '勤務先住所':
-                            detail_info['所在地'] = value
+                            detail_info['住所'] = value
+                        elif header == '代表者' or header == '院長' or header == '理事長':
+                            detail_info['代表者名'] = value
+                        elif header == '電話番号' or header == 'TEL':
+                            detail_info['電話番号'] = value
+                        elif header == 'メールアドレス' or header == 'Email':
+                            detail_info['メールアドレス'] = value
             
-            # 仕事の内容を取得
+            # WebサイトURLは詳細ページ自体のURL
+            detail_info['WebサイトURL'] = detail_url
+            
+            # 事業内容を取得（仕事の内容）
             job_desc_div = soup.find('div', class_='job_desc_txt')
             if job_desc_div:
                 desc_p = job_desc_div.find('p')
                 if desc_p:
-                    detail_info['仕事の内容'] = desc_p.get_text(strip=True)[:500] + "..."  # 500文字に制限
+                    detail_info['事業内容'] = desc_p.get_text(strip=True)[:500] + "..."  # 500文字に制限
             
             return detail_info
             

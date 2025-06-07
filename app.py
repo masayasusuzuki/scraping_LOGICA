@@ -1,289 +1,292 @@
 import streamlit as st
 import pandas as pd
-from scrapers.medical_concierge import MedicalConciergeUI
+from scrapers.torabayu_scraper import TorabayuUI
 from scrapers.biyou_nurse import BiyouNurseUI
-from scrapers.indeed_scraper import IndeedUI
 
-def main():
-    """メインアプリケーション"""
-    st.set_page_config(
-        page_title="求人サイトスクレイピング",
-        layout="wide",
-        initial_sidebar_state="expanded"
+# ページ設定
+st.set_page_config(
+    page_title="LOGICA SCRAPING",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# パスワード認証機能
+def check_password():
+    """パスワード認証を確認"""
+    def password_entered():
+        """ユーザーがパスワードを入力したときに呼ばれる"""
+        if st.session_state["password"] == "Logica0312":
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # パスワードをセッションから削除（セキュリティ）
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # 最もシンプルな認証画面
+        st.markdown("""
+        <div style='text-align: center; padding: 2rem; background: white;'>
+            <h1 style='color: black; margin-bottom: 1rem;'>LOGICA SCRAPING</h1>
+            <p style='color: black; margin-bottom: 2rem;'>認証が必要です</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 最もシンプルな入力フォーム（デフォルトスタイル使用）
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.text_input(
+                "パスワード", 
+                on_change=password_entered, 
+                key="password",
+                placeholder="パスワードを入力"
+            )
+        return False
+    elif not st.session_state["password_correct"]:
+        # エラー時も最もシンプルなデザイン
+        st.markdown("""
+        <div style='text-align: center; padding: 2rem; background: white;'>
+            <h1 style='color: black; margin-bottom: 1rem;'>LOGICA SCRAPING</h1>
+            <p style='color: red; margin-bottom: 2rem;'>パスワードが正しくありません</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # エラー時も最もシンプル（デフォルトスタイル使用）
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.text_input(
+                "パスワード", 
+                on_change=password_entered, 
+                key="password",
+                placeholder="パスワードを入力"
+            )
+        return False
+    else:
+        # パスワードが正しい場合
+        return True
+
+# パスワード認証をチェック
+if not check_password():
+    st.stop()
+
+# カスタムCSS - サイドバーデザイン
+st.markdown("""
+<style>
+/* サイドバーの背景色を高級感ある黒に */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
+    border-right: 3px solid #444444 !important;
+}
+
+section[data-testid="stSidebar"] > div {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
+    padding-top: 2rem !important;
+}
+
+/* サイドバー内のテキスト色を白に */
+section[data-testid="stSidebar"] * {
+    color: white !important;
+}
+
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    margin-bottom: 1.5rem !important;
+    padding-bottom: 0.8rem !important;
+    border-bottom: 2px solid #555555 !important;
+    text-align: center !important;
+    letter-spacing: 2px !important;
+    font-family: 'Arial', sans-serif !important;
+}
+
+/* ラジオボタンのスタイリング */
+section[data-testid="stSidebar"] label {
+    color: #e5e7eb !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+}
+
+/* ラジオボタンのオプション項目のホバー効果のみ適用 */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 5px !important;
+    padding: 4px 8px !important;
+    transition: all 0.3s ease !important;
+}
+
+/* ラジオボタンのタイトル部分（「サイトを選択してください」）のホバー効果を無効化 */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] > label:first-child {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    pointer-events: none !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stRadio"] > label:first-child:hover {
+    background-color: transparent !important;
+    padding: 0 !important;
+}
+
+/* ラジオボタンの選択状態 */
+section[data-testid="stSidebar"] input[type="radio"]:checked + label {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border-radius: 5px !important;
+    padding: 6px 10px !important;
+}
+
+/* チェックボックスのスタイリング */
+section[data-testid="stSidebar"] .stCheckbox {
+    margin-top: 1rem !important;
+}
+
+section[data-testid="stSidebar"] .stCheckbox label {
+    font-size: 13px !important;
+    color: #cccccc !important;
+}
+
+/* レガシー対応 */
+.css-1d391kg,
+.css-1outpf7,
+.st-emotion-cache-16txtl3 {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
+}
+
+.css-1d391kg *,
+.css-1outpf7 *,
+.st-emotion-cache-16txtl3 * {
+    color: white !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# サイドバーでスクレイパーを選択
+st.sidebar.title("LOGICA SCRAPING")
+
+scraper_options = [
+    "美容ナース.com",
+    "とらばーゆ東京",
+    "とらばーゆ神奈川", 
+    "とらばーゆ千葉",
+    "とらばーゆ埼玉"
+]
+
+selected_scraper = st.sidebar.radio(
+    "サイトを選択してください",
+    scraper_options,
+    index=0
+)
+
+# メイン画面
+
+# 選択されたスクレイパーに基づいてUIを表示
+df_result = None
+
+if selected_scraper == "美容ナース.com":
+    # 美容ナースUIを表示
+    biyou_nurse_ui = BiyouNurseUI()
+    df_result = biyou_nurse_ui.render_ui()
+
+elif selected_scraper == "とらばーゆ東京":
+    # とらばーゆ東京UIを表示
+    torabayu_ui = TorabayuUI(region="tokyo")
+    df_result = torabayu_ui.render_ui()
+
+elif selected_scraper == "とらばーゆ神奈川":
+    # とらばーゆ神奈川UIを表示
+    torabayu_ui = TorabayuUI(region="kanagawa")
+    df_result = torabayu_ui.render_ui()
+
+elif selected_scraper == "とらばーゆ千葉":
+    # とらばーゆ千葉UIを表示
+    torabayu_ui = TorabayuUI(region="chiba")
+    df_result = torabayu_ui.render_ui()
+
+elif selected_scraper == "とらばーゆ埼玉":
+    # とらばーゆ埼玉UIを表示
+    torabayu_ui = TorabayuUI(region="saitama")
+    df_result = torabayu_ui.render_ui()
+
+# 検索結果の表示
+if df_result is not None and not df_result.empty:
+    st.divider()
+    st.subheader("📊 検索結果")
+    
+    # 統計情報
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("取得件数", len(df_result))
+    with col2:
+        # 電話番号カラムが存在するかチェック
+        phone_col = '電話番号' if '電話番号' in df_result.columns else None
+        if phone_col:
+            phone_count = len(df_result[df_result[phone_col] != ''])
+            st.metric("電話番号あり", phone_count)
+        else:
+            st.metric("電話番号あり", 0)
+    with col3:
+        # 代表者名カラムが存在するかチェック  
+        rep_col = '代表者名' if '代表者名' in df_result.columns else None
+        if rep_col:
+            rep_count = len(df_result[df_result[rep_col] != ''])
+            st.metric("代表者名あり", rep_count)
+        else:
+            st.metric("代表者名あり", 0)
+    
+    # データフレームを表示（統一されたヘッダー順序）
+    # カラム順序を統一
+    preferred_columns = ['施設名', '代表者名', '住所', 'WebサイトURL', '電話番号', 'メールアドレス', '事業内容']
+    
+    # 存在するカラムのみを選択し、順序を調整
+    available_columns = []
+    for col in preferred_columns:
+        if col in df_result.columns:
+            available_columns.append(col)
+    
+    # 残りのカラムも追加（後方に配置）
+    for col in df_result.columns:
+        if col not in available_columns:
+            available_columns.append(col)
+    
+    # カラム順序に従ってデータフレームを再構成
+    df_display = df_result[available_columns]
+    
+    st.dataframe(
+        df_display,
+        use_container_width=True,
+        height=400,
+        column_config={
+            "施設名": st.column_config.TextColumn("施設名（会社名）", width="medium"),
+            "代表者名": st.column_config.TextColumn("代表者名", width="small"),
+            "住所": st.column_config.TextColumn("住所", width="large"),
+            "WebサイトURL": st.column_config.LinkColumn("WebサイトURL", width="medium"),
+            "電話番号": st.column_config.TextColumn("電話番号", width="small"),
+            "メールアドレス": st.column_config.TextColumn("メールアドレス", width="medium"),
+            "事業内容": st.column_config.TextColumn("事業内容", width="large"),
+            # 後方互換性のため既存カラムも対応
+            "勤務地": st.column_config.TextColumn("勤務地", width="large"),
+            "求人URL": st.column_config.LinkColumn("求人URL", width="medium"),
+            "業務内容": st.column_config.TextColumn("業務内容", width="large")
+        }
     )
     
-    # カスタムCSSでサイドバーをスタイリング
-    st.markdown("""
-    <style>
-    /* サイドバーのスタイリング - 新しいStreamlitバージョン対応 */
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
-        border-right: 3px solid #3b82f6 !important;
-    }
-    
-    section[data-testid="stSidebar"] > div {
-        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
-        padding-top: 2rem !important;
-    }
-    
-    /* サイドバー内のテキスト色 */
-    section[data-testid="stSidebar"] * {
-        color: white !important;
-    }
-    
-    section[data-testid="stSidebar"] h1,
-    section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3 {
-        color: #ffffff !important;
-        font-weight: 600 !important;
-        margin-bottom: 1rem !important;
-        padding-bottom: 0.5rem !important;
-        border-bottom: 2px solid #3b82f6 !important;
-    }
-    
-    /* ラジオボタンのスタイリング */
-    section[data-testid="stSidebar"] label {
-        color: #e5e7eb !important;
-        font-weight: 500 !important;
-    }
-    
-    section[data-testid="stSidebar"] label:hover {
-        color: #ffffff !important;
-    }
-    
-    /* ラジオボタンの選択状態 */
-    section[data-testid="stSidebar"] input[type="radio"]:checked + label {
-        color: #ffffff !important;
-        font-weight: 600 !important;
-    }
-    
-    /* カスタムヘッダーのスタイル */
-    .sidebar-header {
-        color: #ffffff !important;
-        font-weight: 600 !important;
-        font-size: 1.1rem !important;
-        margin-bottom: 1.5rem !important;
-        padding-bottom: 0.75rem !important;
-        border-bottom: 2px solid #3b82f6 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-    }
-    
-    /* レガシー対応 */
-    .css-1d391kg,
-    .css-1outpf7,
-    .st-emotion-cache-16txtl3 {
-        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
-    }
-    
-    .css-1d391kg *,
-    .css-1outpf7 *,
-    .st-emotion-cache-16txtl3 * {
-        color: white !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # サイドバー：サイト選択
-    with st.sidebar:
-        st.markdown('<div class="sidebar-header">対象サイト選択</div>', unsafe_allow_html=True)
-        selected_site = st.radio(
-            "",
-            ["美容ナース.com", "メディカル・コンシェルジュネット", "Indeed"],
-            index=0,
-            label_visibility="collapsed"
-        )
-    
-    # メイン画面：動的UI表示エリア
-    if selected_site == "美容ナース.com":
-        biyou_ui = BiyouNurseUI()
-        results = biyou_ui.render_ui()
-        
-        # 結果表示エリア
-        if results is not None:
-            render_results(results, selected_site)
-    
-    elif selected_site == "メディカル・コンシェルジュネット":
-        medical_ui = MedicalConciergeUI()
-        results = medical_ui.render_ui()
-        
-        # 結果表示エリア
-        if results is not None:
-            render_results(results, selected_site)
-    
-    elif selected_site == "Indeed":
-        indeed_ui = IndeedUI()
-        results = indeed_ui.render_ui()
-        
-        # 結果表示エリア
-        if results is not None:
-            render_results(results, selected_site)
+    # CSVダウンロード機能
+    csv = df_result.to_csv(index=False, encoding='utf-8-sig')
+    st.download_button(
+        label="📥 CSVダウンロード",
+        data=csv,
+        file_name=f"{selected_scraper}_求人情報_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        mime="text/csv"
+    )
 
-def render_results(results, site_name):
-    """スクレイピング結果の表示エリア"""
-    st.markdown("---")
-    st.header("取得結果")
-    
-    # Indeedの詳細情報取得時の特別な返り値形式をチェック
-    if isinstance(results, dict) and "progressive_display" in results:
-        # 詳細情報取得時はすでに表示されているので、CSVダウンロードボタンのみ表示
-        results_data = results.get("data")
-        if isinstance(results_data, pd.DataFrame) and not results_data.empty:
-            # CSVダウンロードボタンのみ表示
-            csv_data = results_data.to_csv(index=False, encoding='utf-8-sig')
-            st.download_button(
-                label="CSVファイルをダウンロード",
-                data=csv_data,
-                file_name=f"{site_name}_求人情報_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv"
-            )
-        return
-    
-    if isinstance(results, dict) and "error" in results:
-        st.error(f"エラーが発生しました: {results['error']}")
-        return
-    
-    if isinstance(results, pd.DataFrame) and not results.empty:
-        # 取得件数表示
-        st.success(f"{len(results)}件の求人が見つかりました。")
-        
-        # 求人一覧テーブル（指定された7項目のみ）
-        st.subheader("求人一覧テーブル")
-        
-        # 施設名の統一（クリニック名がある場合は施設名として扱う）
-        display_results = results.copy()
-        if 'クリニック名' in display_results.columns and '施設名' not in display_results.columns:
-            display_results['施設名'] = display_results['クリニック名']
-        elif 'クリニック名' in display_results.columns and '施設名' in display_results.columns:
-            # 施設名が空の場合はクリニック名を使用
-            display_results['施設名'] = display_results['施設名'].fillna(display_results['クリニック名'])
-            display_results['施設名'] = display_results.apply(
-                lambda row: row['クリニック名'] if (pd.isna(row['施設名']) or row['施設名'] == '') else row['施設名'], axis=1
-            )
-        
-        # 求人URLの列名を統一
-        if '詳細ページURL' in display_results.columns:
-            display_results['求人URL'] = display_results['詳細ページURL']
-        
-        # 業務内容の列名を統一
-        if '仕事の内容' in display_results.columns:
-            display_results['業務内容'] = display_results['仕事の内容']
-        
-        # Indeedの場合は詳細情報を含む表示
-        if site_name == "Indeed":
-            # Indeed用の詳細表示カラム
-            indeed_columns = [
-                '職種名', '会社名', '勤務地', '給与', '雇用形態', '詳細ページURL',
-                '職務内容', '必要スキル', '福利厚生', '勤務時間', '企業情報', '応募方法'
-            ]
-            available_indeed_columns = [col for col in indeed_columns if col in display_results.columns]
-            
-            if available_indeed_columns:
-                st.dataframe(
-                    display_results[available_indeed_columns],
-                    use_container_width=True,
-                    hide_index=True,
-                    height=600  # より高い表示領域
-                )
-            else:
-                st.dataframe(
-                    results,
-                    use_container_width=True,
-                    hide_index=True,
-                    height=600
-                )
-        else:
-            # 他のサイト用の指定された7項目のカラム順序
-            target_columns = [
-                '施設名', '代表者名', '勤務地', '求人URL', '電話番号', 'メールアドレス', '業務内容'
-            ]
-        
-            # 存在するカラムのみを選択
-            available_target_columns = [col for col in target_columns if col in display_results.columns]
-            
-            if available_target_columns:
-                # 指定された項目のみを表示
-                target_data = display_results[available_target_columns]
-                st.dataframe(
-                    target_data,
-                    use_container_width=True,
-                    hide_index=True,
-                    height=400
-                )
-            else:
-                # 指定項目が見つからない場合は全データを表示
-                st.dataframe(
-                    results,
-                    use_container_width=True,
-                    hide_index=True,
-                    height=400
-                )
-        
-        # CSVダウンロードボタン
-        # カラムの順序を整理（ユーザー指定の順序）
-        column_order = [
-            '施設名', 'クリニック名', '代表者名', '勤務地', '詳細ページURL', '電話番号', 'メールアドレス', '仕事の内容',
-            '求人No', 'タイトル', '職種', '施設', '業務 (働き方)', '給与', '交通',
-            'メインの施術', '所在地', '情報源サイト名'
-        ]
-        
-        # 存在するカラムのみを選択
-        available_columns = [col for col in column_order if col in results.columns]
-        
-        # 最終的な表示用カラム順序（ユーザー指定）
-        final_column_order = [
-            '施設名', '代表者名', '勤務地', '求人URL', '電話番号', 'メールアドレス', '業務内容'
-        ]
-        
-        # 追加情報も含める場合
-        additional_columns = [
-            '求人No', 'タイトル', '職種', '給与', '交通', 'メインの施術', '所在地', '情報源サイト名'
-        ]
-        
-        # 存在するカラムのみを最終選択
-        final_available_columns = [col for col in final_column_order if col in display_results.columns]
-        additional_available_columns = [col for col in additional_columns if col in display_results.columns]
-        
-        # メイン情報＋追加情報の順序で結合
-        all_display_columns = final_available_columns + additional_available_columns
-        ordered_results = display_results[all_display_columns]
-        
-        csv_data = ordered_results.to_csv(index=False, encoding='utf-8-sig')
-        st.download_button(
-            label="CSVファイルをダウンロード",
-            data=csv_data,
-            file_name=f"{site_name}_求人情報_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            mime="text/csv"
-        )
-        
-        # 統計情報
-        with st.expander("データ統計"):
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("総件数", len(results))
-            with col2:
-                unique_locations = results['勤務地'].nunique() if '勤務地' in results.columns else 0
-                st.metric("勤務地数", unique_locations)
-            with col3:
-                # 美容ナース.comの場合はクリニック名、その他は職種でカウント
-                if site_name == "美容ナース.com" and 'クリニック名' in results.columns:
-                    unique_clinics = results['クリニック名'].nunique()
-                    st.metric("クリニック数", unique_clinics)
-                else:
-                    unique_jobs = results['職種'].nunique() if '職種' in results.columns else 0
-                    st.metric("職種数", unique_jobs)
-            with col4:
-                # 詳細情報取得率
-                detail_count = len([idx for idx, row in results.iterrows() 
-                                 if any(row.get(col) for col in ['施設名', '所在地', '電話番号'])])
-                detail_rate = (detail_count / len(results)) * 100 if len(results) > 0 else 0
-                st.metric("詳細情報取得率", f"{detail_rate:.1f}%")
-    
-    elif isinstance(results, pd.DataFrame) and results.empty:
-        st.warning("指定された条件では求人が見つかりませんでした。検索条件を変更してお試しください。")
-    
-    else:
-        st.error("データの取得に失敗しました。しばらく時間をおいてから再度お試しください。")
-
-if __name__ == "__main__":
-    main() 
+# フッター
+st.divider()
+st.markdown("""
+<div style='text-align: center; color: #666; font-size: 14px;'>
+    <p>LOGICA SCRAPING</p>
+    <p>対応サイト: 美容ナース.com、とらばーゆ（東京・神奈川・千葉・埼玉）</p>
+</div>
+""", unsafe_allow_html=True) 

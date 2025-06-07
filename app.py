@@ -43,7 +43,7 @@ def check_password():
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 2rem;
             font-weight: 700;
-            color: #000000;
+            color: var(--text-color, #000000) !important;
             text-align: center;
             margin-bottom: 0.5rem;
             letter-spacing: 3px;
@@ -52,11 +52,33 @@ def check_password():
         .simple-subtitle {
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 0.9rem;
-            color: #000000;
+            color: var(--text-color, #000000) !important;
             text-align: center;
             margin-bottom: 1rem;
             text-transform: uppercase;
             letter-spacing: 1px;
+        }
+        
+        /* ダークモード時の認証画面タイトル - より強力なセレクタ */
+        [data-theme="dark"] .simple-title,
+        .stApp[data-theme="dark"] .simple-title,
+        html[data-theme="dark"] .simple-title {
+            color: #ffffff !important;
+        }
+        
+        [data-theme="dark"] .simple-subtitle,
+        .stApp[data-theme="dark"] .simple-subtitle,
+        html[data-theme="dark"] .simple-subtitle {
+            color: #ffffff !important;
+        }
+        
+        /* Streamlitのダークモード検出 */
+        .stApp[data-baseweb-theme="dark"] .simple-title {
+            color: #ffffff !important;
+        }
+        
+        .stApp[data-baseweb-theme="dark"] .simple-subtitle {
+            color: #ffffff !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -99,7 +121,7 @@ def check_password():
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 2rem;
             font-weight: 700;
-            color: #000000;
+            color: var(--text-color, #000000) !important;
             text-align: center;
             margin-bottom: 0.5rem;
             letter-spacing: 3px;
@@ -108,11 +130,33 @@ def check_password():
         .simple-error-message {
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 0.9rem;
-            color: #000000;
+            color: var(--text-color, #000000) !important;
             text-align: center;
             margin-bottom: 1rem;
             text-transform: uppercase;
             letter-spacing: 1px;
+        }
+        
+        /* ダークモード時のエラー画面タイトル - より強力なセレクタ */
+        [data-theme="dark"] .simple-error-title,
+        .stApp[data-theme="dark"] .simple-error-title,
+        html[data-theme="dark"] .simple-error-title {
+            color: #ffffff !important;
+        }
+        
+        [data-theme="dark"] .simple-error-message,
+        .stApp[data-theme="dark"] .simple-error-message,
+        html[data-theme="dark"] .simple-error-message {
+            color: #ffffff !important;
+        }
+        
+        /* Streamlitのダークモード検出 */
+        .stApp[data-baseweb-theme="dark"] .simple-error-title {
+            color: #ffffff !important;
+        }
+        
+        .stApp[data-baseweb-theme="dark"] .simple-error-message {
+            color: #ffffff !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -146,14 +190,141 @@ def check_password():
 if not check_password():
     st.stop()
 
-# ライトモード固定とテーマ切り替えメニューを非表示にするCSS
+# ライトモード・ダークモード両対応のCSS
 st.markdown("""
 <style>
-/* ライトモードを強制する */
-.stApp {
-    color-scheme: light !important;
-    background-color: white !important;
-    color: black !important;
+/* CSS変数を定義 */
+:root {
+    --text-color: #000000;
+    --bg-color: #ffffff;
+}
+
+/* ダークモードのCSS変数 */
+[data-theme="dark"] {
+    --text-color: #ffffff;
+    --bg-color: #0e1117;
+}
+
+/* より確実なダークモード検出 */
+.stApp[data-baseweb-theme="dark"] {
+    --text-color: #ffffff !important;
+    --bg-color: #0e1117 !important;
+    background-color: #0e1117 !important;
+    color: #ffffff !important;
+}
+
+/* 全体のテキスト色を統一 */
+.stApp,
+.main,
+.main .block-container,
+div[data-testid="stVerticalBlock"],
+div[data-testid="stHorizontalBlock"],
+.stMarkdown,
+.stMarkdown p,
+.stMarkdown h1,
+.stMarkdown h2, 
+.stMarkdown h3,
+.stMarkdown h4,
+.stMarkdown h5,
+.stMarkdown h6,
+.stText {
+    color: var(--text-color, #000000) !important;
+}
+
+/* ダークモード時の全体背景 */
+.stApp[data-baseweb-theme="dark"],
+.stApp[data-baseweb-theme="dark"] .main,
+.stApp[data-baseweb-theme="dark"] .main .block-container {
+    background-color: #0e1117 !important;
+    color: #ffffff !important;
+}
+
+/* ダークモード時の全てのテキスト要素 */
+.stApp[data-baseweb-theme="dark"] .stMarkdown,
+.stApp[data-baseweb-theme="dark"] .stMarkdown p,
+.stApp[data-baseweb-theme="dark"] .stMarkdown h1,
+.stApp[data-baseweb-theme="dark"] .stMarkdown h2,
+.stApp[data-baseweb-theme="dark"] .stMarkdown h3,
+.stApp[data-baseweb-theme="dark"] .stMarkdown h4,
+.stApp[data-baseweb-theme="dark"] .stMarkdown h5,
+.stApp[data-baseweb-theme="dark"] .stMarkdown h6,
+.stApp[data-baseweb-theme="dark"] .stText,
+.stApp[data-baseweb-theme="dark"] div[data-testid="stVerticalBlock"],
+.stApp[data-baseweb-theme="dark"] div[data-testid="stHorizontalBlock"] {
+    color: #ffffff !important;
+}
+
+/* ダークモード時の入力フィールド */
+.stApp[data-baseweb-theme="dark"] .stTextInput > div > div > input {
+    background-color: #262730 !important;
+    color: #ffffff !important;
+    border-color: #555555 !important;
+}
+
+/* ダークモード時のセレクトボックス */
+.stApp[data-baseweb-theme="dark"] .stSelectbox > div > div {
+    background-color: #262730 !important;
+    color: #ffffff !important;
+}
+
+/* ダークモード時のボタン */
+.stApp[data-baseweb-theme="dark"] .stButton > button {
+    background-color: #262730 !important;
+    color: #ffffff !important;
+    border: 1px solid #555555 !important;
+}
+
+.stApp[data-baseweb-theme="dark"] .stButton > button:hover {
+    background-color: #3c3c43 !important;
+    color: #ffffff !important;
+}
+
+/* ダークモード時のデータフレーム */
+.stApp[data-baseweb-theme="dark"] .stDataFrame,
+.stApp[data-baseweb-theme="dark"] .stDataFrame table,
+.stApp[data-baseweb-theme="dark"] .stDataFrame th,
+.stApp[data-baseweb-theme="dark"] .stDataFrame td {
+    background-color: #262730 !important;
+    color: #ffffff !important;
+}
+
+/* ダークモード時のメトリクス */
+.stApp[data-baseweb-theme="dark"] div[data-testid="metric-container"],
+.stApp[data-baseweb-theme="dark"] div[data-testid="metric-container"] * {
+    color: #ffffff !important;
+}
+
+/* 共通スタイル（両モード共通） */
+.stButton > button[kind="primary"] {
+    background-color: #0066cc !important;
+    color: white !important;
+    border: none !important;
+}
+
+.stButton > button[kind="primary"]:hover {
+    background-color: #0052a3 !important;
+    color: white !important;
+}
+
+/* 成功・警告・エラーメッセージ（両モード対応） */
+.stSuccess {
+    background-color: #d4edda !important;
+    color: #155724 !important;
+}
+
+.stWarning {
+    background-color: #fff3cd !important;
+    color: #856404 !important;
+}
+
+.stError {
+    background-color: #f8d7da !important;
+    color: #721c24 !important;
+}
+
+.stInfo {
+    background-color: #d1ecf1 !important;
+    color: #0c5460 !important;
 }
 
 /* メインメニューボタンを非表示 */
@@ -280,52 +451,294 @@ section[data-testid="stSidebar"] .stCheckbox label {
 # サイドバーでスクレイパーを選択
 st.sidebar.title("LOGICA SCRAPING")
 
-scraper_options = [
-    "美容ナース.com",
-    "とらばーゆ東京",
-    "とらばーゆ神奈川", 
-    "とらばーゆ千葉",
-    "とらばーゆ埼玉"
-]
-
-selected_scraper = st.sidebar.radio(
-    "サイトを選択してください",
-    scraper_options,
+# メインメニューの選択
+main_menu = st.sidebar.radio(
+    "メニューを選択してください",
+    ["スクレイピング", "機能改善"],
     index=0
 )
 
+if main_menu == "スクレイピング":
+    scraper_options = [
+        "美容ナース.com",
+        "とらばーゆ東京",
+        "とらばーゆ神奈川", 
+        "とらばーゆ千葉",
+        "とらばーゆ埼玉"
+    ]
+
+    selected_scraper = st.sidebar.radio(
+        "サイトを選択してください",
+        scraper_options,
+        index=0
+    )
+
 # メイン画面
 
-# 選択されたスクレイパーに基づいてUIを表示
-df_result = None
+if main_menu == "スクレイピング":
+    # 選択されたスクレイパーに基づいてUIを表示
+    df_result = None
 
-if selected_scraper == "美容ナース.com":
-    # 美容ナースUIを表示
-    biyou_nurse_ui = BiyouNurseUI()
-    df_result = biyou_nurse_ui.render_ui()
+    if selected_scraper == "美容ナース.com":
+        # 美容ナースUIを表示
+        biyou_nurse_ui = BiyouNurseUI()
+        df_result = biyou_nurse_ui.render_ui()
 
-elif selected_scraper == "とらばーゆ東京":
-    # とらばーゆ東京UIを表示
-    torabayu_ui = TorabayuUI(region="tokyo")
-    df_result = torabayu_ui.render_ui()
+    elif selected_scraper == "とらばーゆ東京":
+        # とらばーゆ東京UIを表示
+        torabayu_ui = TorabayuUI(region="tokyo")
+        df_result = torabayu_ui.render_ui()
 
-elif selected_scraper == "とらばーゆ神奈川":
-    # とらばーゆ神奈川UIを表示
-    torabayu_ui = TorabayuUI(region="kanagawa")
-    df_result = torabayu_ui.render_ui()
+    elif selected_scraper == "とらばーゆ神奈川":
+        # とらばーゆ神奈川UIを表示
+        torabayu_ui = TorabayuUI(region="kanagawa")
+        df_result = torabayu_ui.render_ui()
 
-elif selected_scraper == "とらばーゆ千葉":
-    # とらばーゆ千葉UIを表示
-    torabayu_ui = TorabayuUI(region="chiba")
-    df_result = torabayu_ui.render_ui()
+    elif selected_scraper == "とらばーゆ千葉":
+        # とらばーゆ千葉UIを表示
+        torabayu_ui = TorabayuUI(region="chiba")
+        df_result = torabayu_ui.render_ui()
 
-elif selected_scraper == "とらばーゆ埼玉":
-    # とらばーゆ埼玉UIを表示
-    torabayu_ui = TorabayuUI(region="saitama")
-    df_result = torabayu_ui.render_ui()
+    elif selected_scraper == "とらばーゆ埼玉":
+        # とらばーゆ埼玉UIを表示
+        torabayu_ui = TorabayuUI(region="saitama")
+        df_result = torabayu_ui.render_ui()
+
+elif main_menu == "機能改善":
+    import gspread
+    from google.oauth2.service_account import Credentials
+    import json
+    from datetime import datetime
+    
+    # 機能改善要望フォーム
+    st.header("機能改善要望")
+    st.markdown("アプリの改善提案をお聞かせください。いただいたご意見は今後の開発に活用させていただきます。")
+    
+    with st.form("improvement_form", clear_on_submit=True):
+        st.subheader("要望内容")
+        
+        # 名前の入力
+        name = st.text_input(
+            "お名前 *",
+            placeholder="お名前をご入力ください",
+            help="必須項目です"
+        )
+        
+        # 改善要望の入力
+        improvement_request = st.text_area(
+            "機能改善要望 *",
+            placeholder="改善したい機能や新しく追加したい機能について詳しくお聞かせください",
+            height=150,
+            help="具体的にご記入いただけると助かります"
+        )
+        
+        # 入力日
+        input_date = st.date_input(
+            "入力日",
+            help="要望を入力する日付を選択してください"
+        )
+        
+        # 希望実装日
+        desired_date = st.date_input(
+            "希望実装日（参考）",
+            help="実装を希望される時期の目安があれば選択してください"
+        )
+        
+        # 送信ボタン
+        submitted = st.form_submit_button("要望を送信", use_container_width=True)
+        
+        if submitted:
+            # バリデーション
+            if not name.strip():
+                st.error("お名前を入力してください。")
+            elif not improvement_request.strip():
+                st.error("機能改善要望を入力してください。")
+            else:
+                # Google Sheetsに送信する処理
+                try:
+                    # サービスアカウントキーファイルの読み込みを試行
+                    try:
+                        with open('service_account_key.json', 'r') as f:
+                            service_account_key = json.load(f)
+                        
+                        # Google Sheets APIの認証
+                        scope = [
+                            'https://www.googleapis.com/auth/spreadsheets',
+                            'https://www.googleapis.com/auth/drive'
+                        ]
+                        
+                        creds = Credentials.from_service_account_info(service_account_key, scopes=scope)
+                        client = gspread.authorize(creds)
+                        
+                        # スプレッドシートを開く
+                        sheet_id = "1jTjdTEB2eT_3hFnoav1reyZFFz8RmsQGoL8DZc-E9cU"
+                        spreadsheet = client.open_by_key(sheet_id)
+                        worksheet = spreadsheet.worksheet("ツール改善案")
+                        
+                        # データを追加（A列=名前、B列=要望、C列=入力日、D列=希望実装日）
+                        row_data = [
+                            name.strip(),
+                            improvement_request.strip(),
+                            input_date.strftime("%Y-%m-%d"),
+                            desired_date.strftime("%Y-%m-%d")
+                        ]
+                        
+                        worksheet.append_row(row_data)
+                        
+                        st.success("要望を送信しました。貴重なご意見をありがとうございます。")
+                        
+                    except FileNotFoundError:
+                        st.error("Google Sheets APIの設定が完了していません。下記の設定手順をご確認ください。")
+                        
+                        # 設定手順を表示
+                        with st.expander("Google Sheets API設定手順", expanded=True):
+                            st.markdown("""
+                            ### 1. Google Cloud Consoleでプロジェクトを作成・選択
+                            
+                            1. [Google Cloud Console](https://console.cloud.google.com/) にアクセス
+                            2. 新しいプロジェクトを作成するか、既存のプロジェクトを選択
+                            
+                            ### 2. Google Sheets APIを有効化
+                            
+                            1. Google Cloud Consoleで「APIとサービス」→「ライブラリ」に移動
+                            2. 「Google Sheets API」を検索して有効化
+                            3. 「Google Drive API」も検索して有効化
+                            
+                            ### 3. サービスアカウントを作成
+                            
+                            1. 「APIとサービス」→「認証情報」に移動
+                            2. 「認証情報を作成」→「サービスアカウント」を選択
+                            3. サービスアカウント名を入力（例：logica-scraping-service）
+                            4. 「作成して続行」をクリック
+                            5. ロールは「編集者」を選択
+                            6. 「完了」をクリック
+                            
+                            ### 4. サービスアカウントキーを作成・ダウンロード
+                            
+                            1. 作成したサービスアカウントをクリック
+                            2. 「キー」タブに移動
+                            3. 「キーを追加」→「新しいキーを作成」を選択
+                            4. キーのタイプは「JSON」を選択
+                            5. 「作成」をクリックしてJSONファイルをダウンロード
+                            6. ダウンロードしたファイルを `service_account_key.json` という名前でこのアプリのフォルダに配置
+                            
+                            ### 5. スプレッドシートの共有設定
+                            
+                            1. [こちらのスプレッドシート](https://docs.google.com/spreadsheets/d/1jTjdTEB2eT_3hFnoav1reyZFFz8RmsQGoL8DZc-E9cU/edit?usp=sharing) を開く
+                            2. 右上の「共有」ボタンをクリック
+                            3. サービスアカウントのメールアドレス（service_account_key.jsonファイル内の`client_email`）を追加
+                            4. 権限を「編集者」に設定
+                            5. 「送信」をクリック
+                            
+                            ### 6. 設定完了の確認
+                            
+                            - `service_account_key.json` ファイルがアプリフォルダに配置されていること
+                            - スプレッドシートがサービスアカウントと共有されていること
+                            - スプレッドシート内に「ツール改善案」シートが存在すること
+                            
+                            設定完了後、再度要望を送信してください。
+                            """)
+                        
+                except Exception as e:
+                    st.error(f"送信中にエラーが発生しました: {str(e)}")
+                    st.info("管理者にお問い合わせください。")
+    
+    # 送信済み要望の確認（管理者向け）
+    st.divider()
+    st.subheader("送信済み要望一覧")
+    
+    # ページ読み込み時に自動でデータを取得・表示
+    try:
+        with open('service_account_key.json', 'r') as f:
+            service_account_key = json.load(f)
+        
+        scope = [
+            'https://www.googleapis.com/auth/spreadsheets',
+            'https://www.googleapis.com/auth/drive'
+        ]
+        
+        creds = Credentials.from_service_account_info(service_account_key, scopes=scope)
+        client = gspread.authorize(creds)
+        
+        sheet_id = "1jTjdTEB2eT_3hFnoav1reyZFFz8RmsQGoL8DZc-E9cU"
+        spreadsheet = client.open_by_key(sheet_id)
+        worksheet = spreadsheet.worksheet("ツール改善案")
+        
+        # 全データを確実に取得（明示的に範囲を指定）
+        # まず使用範囲を確認
+        try:
+            # A1から最後のデータまでの範囲を取得
+            all_values = worksheet.get_all_values()
+            
+            # 空行を除去せずに全データを取得（デバッグ用情報も含める）
+            data = all_values
+            
+
+            
+        except Exception as e:
+            st.error(f"データ取得エラー: {str(e)}")
+            # 代替手段として明示的に範囲を指定
+            try:
+                data = worksheet.get('A:D')  # A列からD列まで全て取得
+            except Exception as e2:
+                st.error(f"代替データ取得もエラー: {str(e2)}")
+                data = []
+        
+        if data:
+            if len(data) > 0:
+                # 正しいヘッダーを定義
+                expected_headers = ['名前', '要望', '入力日', '希望実装日']
+                
+                # 1行目がヘッダー行かデータ行かを判断
+                first_row = data[0]
+                is_header_row = (first_row == expected_headers)
+                
+                if is_header_row:
+                    # 1行目がヘッダー行の場合
+                    headers = first_row
+                    data_rows = data[1:] if len(data) > 1 else []
+                else:
+                    # 1行目からデータ行の場合（ヘッダー行が存在しない）
+                    headers = expected_headers
+                    data_rows = data  # 1行目からすべてデータとして扱う
+                
+                if data_rows:
+                    # DataFrameに変換
+                    df = pd.DataFrame(data_rows, columns=headers)
+                    
+                    # シンプルな表として表示
+                    st.dataframe(
+                        df,
+                        use_container_width=True,
+                        column_config={
+                            "名前": st.column_config.TextColumn("名前", width="small"),
+                            "要望": st.column_config.TextColumn("要望", width="large"),
+                            "入力日": st.column_config.TextColumn("入力日", width="small"),
+                            "希望実装日": st.column_config.TextColumn("希望実装日", width="small"),
+                        }
+                    )
+                    
+                    # 統計情報を表示
+                    st.success(f"{len(df)}件の要望が登録されています。")
+                        
+                else:
+                    st.info("まだ要望が登録されていません。")
+            else:
+                st.info("まだ要望が登録されていません。")
+        else:
+            st.info("まだ要望が登録されていません。")
+            
+    except FileNotFoundError:
+        st.warning("Google Sheets APIの設定が必要です。上記の設定手順をご確認ください。")
+    except Exception as e:
+        st.error(f"データの読み込み中にエラーが発生しました: {str(e)}")
+    
+    # 手動更新ボタン
+    if st.button("最新データを再読み込み", use_container_width=True):
+        st.rerun()
 
 # 検索結果の表示
-if df_result is not None and not df_result.empty:
+if main_menu == "スクレイピング" and 'df_result' in locals() and df_result is not None and not df_result.empty:
     st.divider()
     st.subheader("📊 検索結果")
     

@@ -7,7 +7,12 @@ from scrapers.biyou_nurse import BiyouNurseUI
 st.set_page_config(
     page_title="LOGICA SCRAPING",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
 )
 
 # パスワード認証機能
@@ -140,6 +145,43 @@ def check_password():
 # パスワード認証をチェック
 if not check_password():
     st.stop()
+
+# ライトモード固定とテーマ切り替えメニューを非表示にするCSS
+st.markdown("""
+<style>
+/* ライトモードを強制する */
+.stApp {
+    color-scheme: light !important;
+    background-color: white !important;
+    color: black !important;
+}
+
+/* メインメニューボタンを非表示 */
+button[kind="header"] {
+    display: none !important;
+}
+
+/* テーマ切り替えボタンを非表示 */
+button[data-testid="stDecoration"] {
+    display: none !important;
+}
+
+/* ヘッダーの設定メニューを非表示 */
+section[data-testid="stHeader"] button[aria-label="View app menu, other links, and options"] {
+    display: none !important;
+}
+
+/* Streamlitのデフォルトメニューを非表示 */
+#MainMenu {
+    visibility: hidden !important;
+}
+
+/* ヘッダーを非表示（完全にクリーンな見た目にする場合） */
+header[data-testid="stHeader"] {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # カスタムCSS - サイドバーデザイン
 st.markdown("""

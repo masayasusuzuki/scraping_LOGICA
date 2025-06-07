@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from scrapers.medical_concierge import MedicalConciergeUI
 from scrapers.biyou_nurse import BiyouNurseUI
+from scrapers.indeed_scraper import IndeedUI
 
 def main():
     """メインアプリケーション"""
@@ -88,7 +89,7 @@ def main():
         st.markdown('<div class="sidebar-header">対象サイト選択</div>', unsafe_allow_html=True)
         selected_site = st.radio(
             "",
-            ["美容ナース.com", "メディカル・コンシェルジュネット"],
+            ["美容ナース.com", "メディカル・コンシェルジュネット", "Indeed"],
             index=0,
             label_visibility="collapsed"
         )
@@ -109,11 +110,34 @@ def main():
         # 結果表示エリア
         if results is not None:
             render_results(results, selected_site)
+    
+    elif selected_site == "Indeed":
+        indeed_ui = IndeedUI()
+        results = indeed_ui.render_ui()
+        
+        # 結果表示エリア
+        if results is not None:
+            render_results(results, selected_site)
 
 def render_results(results, site_name):
     """スクレイピング結果の表示エリア"""
     st.markdown("---")
     st.header("取得結果")
+    
+    # Indeedの詳細情報取得時の特別な返り値形式をチェック
+    if isinstance(results, dict) and "progressive_display" in results:
+        # 詳細情報取得時はすでに表示されているので、CSVダウンロードボタンのみ表示
+        results_data = results.get("data")
+        if isinstance(results_data, pd.DataFrame) and not results_data.empty:
+            # CSVダウンロードボタンのみ表示
+            csv_data = results_data.to_csv(index=False, encoding='utf-8-sig')
+            st.download_button(
+                label="CSVファイルをダウンロード",
+                data=csv_data,
+                file_name=f"{site_name}_求人情報_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv"
+            )
+        return
     
     if isinstance(results, dict) and "error" in results:
         st.error(f"エラーが発生しました: {results['error']}")
@@ -145,31 +169,55 @@ def render_results(results, site_name):
         if '仕事の内容' in display_results.columns:
             display_results['業務内容'] = display_results['仕事の内容']
         
-        # 指定された7項目のカラム順序
-        target_columns = [
-            '施設名', '代表者名', '勤務地', '求人URL', '電話番号', 'メールアドレス', '業務内容'
-        ]
-        
-        # 存在するカラムのみを選択
-        available_target_columns = [col for col in target_columns if col in display_results.columns]
-        
-        if available_target_columns:
-            # 指定された項目のみを表示
-            target_data = display_results[available_target_columns]
-            st.dataframe(
-                target_data,
-                use_container_width=True,
-                hide_index=True,
-                height=400
-            )
+        # Indeedの場合は詳細情報を含む表示
+        if site_name == "Indeed":
+            # Indeed用の詳細表示カラム
+            indeed_columns = [
+                '職種名', '会社名', '勤務地', '給与', '雇用形態', '詳細ページURL',
+                '職務内容', '必要スキル', '福利厚生', '勤務時間', '企業情報', '応募方法'
+            ]
+            available_indeed_columns = [col for col in indeed_columns if col in display_results.columns]
+            
+            if available_indeed_columns:
+                st.dataframe(
+                    display_results[available_indeed_columns],
+                    use_container_width=True,
+                    hide_index=True,
+                    height=600  # より高い表示領域
+                )
+            else:
+                st.dataframe(
+                    results,
+                    use_container_width=True,
+                    hide_index=True,
+                    height=600
+                )
         else:
-            # 指定項目が見つからない場合は全データを表示
-            st.dataframe(
-                results,
-                use_container_width=True,
-                hide_index=True,
-                height=400
-            )
+            # 他のサイト用の指定された7項目のカラム順序
+            target_columns = [
+                '施設名', '代表者名', '勤務地', '求人URL', '電話番号', 'メールアドレス', '業務内容'
+            ]
+        
+            # 存在するカラムのみを選択
+            available_target_columns = [col for col in target_columns if col in display_results.columns]
+            
+            if available_target_columns:
+                # 指定された項目のみを表示
+                target_data = display_results[available_target_columns]
+                st.dataframe(
+                    target_data,
+                    use_container_width=True,
+                    hide_index=True,
+                    height=400
+                )
+            else:
+                # 指定項目が見つからない場合は全データを表示
+                st.dataframe(
+                    results,
+                    use_container_width=True,
+                    hide_index=True,
+                    height=400
+                )
         
         # CSVダウンロードボタン
         # カラムの順序を整理（ユーザー指定の順序）

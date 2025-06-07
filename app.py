@@ -22,89 +22,48 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # 統合されたサイバー認証画面
+        # タイトルとサブタイトルを黒色で表示（縦軸中央配置）
         st.markdown("""
         <style>
-        .cyber-auth-unified {
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-            border: 1px solid #333333;
-            border-radius: 8px;
-            padding: 3rem 2rem 2rem 2rem;
-            margin: 2rem auto;
-            max-width: 500px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        .auth-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 15vh;
+            text-align: center;
         }
         
-        .cyber-title {
+        .simple-title {
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 2rem;
             font-weight: 700;
-            color: #00ff88;
+            color: #000000;
             text-align: center;
             margin-bottom: 0.5rem;
             letter-spacing: 3px;
-            border-bottom: 1px solid #333333;
-            padding-bottom: 1rem;
         }
         
-        .cyber-subtitle {
+        .simple-subtitle {
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 0.9rem;
-            color: #ffffff;
+            color: #000000;
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        
-
-        </style>
-        
-        <div class='cyber-auth-unified'>
-            <div class='cyber-title'>LOGICA SCRAPING</div>
-            <div class='cyber-subtitle'>Authentication Required</div>
-        """, unsafe_allow_html=True)
-        
-        # 統合カード内の入力フォーム（スタイルを統合カード内に適用）
-        st.markdown("""
-        <style>
-        /* カード内の入力フィールドスタイル */
-        .cyber-auth-unified .stTextInput > div > div > input {
-            background: transparent !important;
-            border: 1px solid #333333 !important;
-            border-radius: 4px !important;
-            color: #ffffff !important;
-            font-family: 'Arial', 'Helvetica', sans-serif !important;
-            font-size: 1rem !important;
-            padding: 0.8rem 1rem !important;
-            transition: all 0.3s ease !important;
-            margin-top: 1rem !important;
-        }
-        
-        .cyber-auth-unified .stTextInput > div > div > input:focus {
-            border-color: #00ff88 !important;
-            background: rgba(255, 255, 255, 0.05) !important;
-            outline: none !important;
-            box-shadow: 0 0 0 1px #00ff88 !important;
-        }
-        
-        .cyber-auth-unified .stTextInput > div > div > input::placeholder {
-            color: #999999 !important;
-            font-family: 'Arial', 'Helvetica', sans-serif !important;
-        }
-        
-        .cyber-auth-unified .stTextInput > label {
-            color: #ffffff !important;
-            font-family: 'Arial', 'Helvetica', sans-serif !important;
-            font-size: 0.9rem !important;
-            text-transform: uppercase !important;
-            letter-spacing: 1px !important;
-            margin-bottom: 0.5rem !important;
-            margin-top: 1.5rem !important;
-        }
         </style>
         """, unsafe_allow_html=True)
         
+        # 中央配置コンテナの開始
+        st.markdown('<div class="auth-container">', unsafe_allow_html=True)
+        
+        # タイトルとサブタイトル
+        st.markdown('<div class="simple-title">LOGICA SCRAPING</div>', unsafe_allow_html=True)
+        st.markdown('<div class="simple-subtitle">Authentication Required</div>', unsafe_allow_html=True)
+        
+        # 入力フィールド
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
             st.text_input(
@@ -114,93 +73,53 @@ def check_password():
                 placeholder="Enter authentication code"
             )
         
-        # カードを閉じる
-        st.markdown("</div>", unsafe_allow_html=True)
+        # 中央配置コンテナの終了
+        st.markdown('</div>', unsafe_allow_html=True)
+        
         return False
     elif not st.session_state["password_correct"]:
-        # エラー時の統合サイバー認証画面
+        # エラー時のタイトルとサブタイトルを黒色で表示（縦軸中央配置）
         st.markdown("""
         <style>
-        .cyber-error-unified {
-            background: linear-gradient(135deg, #1a0a0a 0%, #2a1a1a 100%);
-            border: 1px solid #664444;
-            border-radius: 8px;
-            padding: 3rem 2rem 2rem 2rem;
-            margin: 2rem auto;
-            max-width: 500px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        .auth-error-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 15vh;
+            text-align: center;
         }
         
-        .error-title {
+        .simple-error-title {
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 2rem;
             font-weight: 700;
-            color: #00ff88;
+            color: #000000;
             text-align: center;
             margin-bottom: 0.5rem;
             letter-spacing: 3px;
-            border-bottom: 1px solid #664444;
-            padding-bottom: 1rem;
         }
         
-        .error-message {
+        .simple-error-message {
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 0.9rem;
-            color: #ffffff;
+            color: #000000;
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        
-
-        </style>
-        
-        <div class='cyber-error-unified'>
-            <div class='error-title'>LOGICA SCRAPING</div>
-            <div class='error-message'>Invalid Authentication Code</div>
-        """, unsafe_allow_html=True)
-        
-        # エラー時の統合カード内入力フォーム
-        st.markdown("""
-        <style>
-        /* エラーカード内の入力フィールドスタイル */
-        .cyber-error-unified .stTextInput > div > div > input {
-            background: transparent !important;
-            border: 1px solid #664444 !important;
-            border-radius: 4px !important;
-            color: #ffffff !important;
-            font-family: 'Arial', 'Helvetica', sans-serif !important;
-            font-size: 1rem !important;
-            padding: 0.8rem 1rem !important;
-            transition: all 0.3s ease !important;
-            margin-top: 1rem !important;
-        }
-        
-        .cyber-error-unified .stTextInput > div > div > input:focus {
-            border-color: #00ff88 !important;
-            background: rgba(255, 255, 255, 0.05) !important;
-            outline: none !important;
-            box-shadow: 0 0 0 1px #00ff88 !important;
-        }
-        
-        .cyber-error-unified .stTextInput > div > div > input::placeholder {
-            color: #999999 !important;
-            font-family: 'Arial', 'Helvetica', sans-serif !important;
-        }
-        
-        .cyber-error-unified .stTextInput > label {
-            color: #ffffff !important;
-            font-family: 'Arial', 'Helvetica', sans-serif !important;
-            font-size: 0.9rem !important;
-            text-transform: uppercase !important;
-            letter-spacing: 1px !important;
-            margin-bottom: 0.5rem !important;
-            margin-top: 1.5rem !important;
-        }
         </style>
         """, unsafe_allow_html=True)
         
+        # エラー時の中央配置コンテナの開始
+        st.markdown('<div class="auth-error-container">', unsafe_allow_html=True)
+        
+        # タイトルとエラーメッセージ
+        st.markdown('<div class="simple-error-title">LOGICA SCRAPING</div>', unsafe_allow_html=True)
+        st.markdown('<div class="simple-error-message">Invalid Authentication Code</div>', unsafe_allow_html=True)
+        
+        # 入力フィールド
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
             st.text_input(
@@ -210,8 +129,9 @@ def check_password():
                 placeholder="Retry authentication code"
             )
         
-        # エラーカードを閉じる
-        st.markdown("</div>", unsafe_allow_html=True)
+        # エラー時の中央配置コンテナの終了
+        st.markdown('</div>', unsafe_allow_html=True)
+        
         return False
     else:
         # パスワードが正しい場合

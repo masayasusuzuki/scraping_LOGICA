@@ -505,10 +505,39 @@ if main_menu == "スクレイピング":
         df_result = torabayu_ui.render_ui()
 
 elif main_menu == "機能改善":
+    import os
     import gspread
     from google.oauth2.service_account import Credentials
     import json
     from datetime import datetime
+    
+    def get_google_credentials():
+        """Google認証情報を取得（環境変数優先、ファイル次点）"""
+        scope = [
+            'https://www.googleapis.com/auth/spreadsheets',
+            'https://www.googleapis.com/auth/drive'
+        ]
+        
+        # 方法1: Streamlit Secretsから取得
+        try:
+            if hasattr(st, 'secrets') and 'gcp_service_account' in st.secrets:
+                return Credentials.from_service_account_info(st.secrets['gcp_service_account'], scopes=scope)
+        except:
+            pass
+        
+        # 方法2: 環境変数から取得
+        if os.environ.get('GOOGLE_SERVICE_ACCOUNT'):
+            try:
+                service_account_info = json.loads(os.environ.get('GOOGLE_SERVICE_ACCOUNT'))
+                return Credentials.from_service_account_info(service_account_info, scopes=scope)
+            except:
+                pass
+        
+        # 方法3: ファイルから取得
+        if os.path.exists('service_account_key.json'):
+            return Credentials.from_service_account_file('service_account_key.json', scopes=scope)
+        
+        raise FileNotFoundError("Google認証情報が見つかりません")
     
     # 機能改善要望フォーム
     st.header("機能改善要望")
@@ -556,18 +585,9 @@ elif main_menu == "機能改善":
             else:
                 # Google Sheetsに送信する処理
                 try:
-                    # サービスアカウントキーファイルの読み込みを試行
+                    # Google認証情報を取得
                     try:
-                        with open('service_account_key.json', 'r') as f:
-                            service_account_key = json.load(f)
-                        
-                        # Google Sheets APIの認証
-                        scope = [
-                            'https://www.googleapis.com/auth/spreadsheets',
-                            'https://www.googleapis.com/auth/drive'
-                        ]
-                        
-                        creds = Credentials.from_service_account_info(service_account_key, scopes=scope)
+                        creds = get_google_credentials()
                         client = gspread.authorize(creds)
                         
                         # スプレッドシートを開く
@@ -588,7 +608,7 @@ elif main_menu == "機能改善":
                         st.success("要望を送信しました。貴重なご意見をありがとうございます。")
                         
                     except FileNotFoundError:
-                        st.error("Google Sheets APIの設定が完了していません。下記の設定手順をご確認ください。")
+                        st.error("Google Sheets APIの設定が完了していません。環境変数またはファイルで認証情報を設定してください。")
                         
                         # 設定手順を表示
                         with st.expander("Google Sheets API設定手順", expanded=True):
@@ -649,15 +669,7 @@ elif main_menu == "機能改善":
     
     # ページ読み込み時に自動でデータを取得・表示
     try:
-        with open('service_account_key.json', 'r') as f:
-            service_account_key = json.load(f)
-        
-        scope = [
-            'https://www.googleapis.com/auth/spreadsheets',
-            'https://www.googleapis.com/auth/drive'
-        ]
-        
-        creds = Credentials.from_service_account_info(service_account_key, scopes=scope)
+        creds = get_google_credentials()
         client = gspread.authorize(creds)
         
         sheet_id = "1jTjdTEB2eT_3hFnoav1reyZFFz8RmsQGoL8DZc-E9cU"
@@ -729,7 +741,7 @@ elif main_menu == "機能改善":
             st.info("まだ要望が登録されていません。")
             
     except FileNotFoundError:
-        st.warning("Google Sheets APIの設定が必要です。上記の設定手順をご確認ください。")
+        st.warning("Google Sheets APIの設定が必要です。環境変数またはファイルで認証情報を設定してください。")
     except Exception as e:
         st.error(f"データの読み込み中にエラーが発生しました: {str(e)}")
     

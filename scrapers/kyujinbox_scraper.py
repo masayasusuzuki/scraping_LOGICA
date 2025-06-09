@@ -245,280 +245,92 @@ class KyujinboxScraper:
         
         return ""
     
-    def search_contact_info_web(self, facility_name, debug_mode=False):
-        """Web検索で企業の連絡先情報を取得（強化版）"""
+    def search_contact_info_web(self, facility_name, address="", debug_mode=False):
+        """Google Places APIのみで電話番号を取得"""
         contact_info = {
             "phone": "",
-            "email": "",
-            "representative": ""
+            "email": "",  # 常に空欄
+            "representative": ""  # 常に空欄
         }
         
         try:
+            # Google Places APIで電話番号を取得
             if debug_mode:
-                st.info(f"🔍 Web検索開始: {facility_name}")
+                st.info(f"🗺️ Google Places API検索開始: {facility_name}")
+                if address:
+                    st.info(f"🏢 住所情報: {address[:50]}...")
             
-            # 複数の検索クエリパターンを試行
-            search_patterns = [
-                f"{facility_name} 電話番号 TEL",
-                f"{facility_name} 連絡先 お問い合わせ",
-                f"{facility_name} 会社概要 電話",
-                f"{facility_name} 代表 TEL 電話"
-            ]
+            phone_from_maps = self.get_phone_number_from_google_places(facility_name, debug_mode)
             
-            best_phone = ""
-            best_email = ""
-            best_representative = ""
-            
-            for idx, search_query in enumerate(search_patterns):
+            if phone_from_maps:
+                contact_info["phone"] = phone_from_maps
                 if debug_mode:
-                    st.info(f"🔍 検索パターン {idx+1}: {search_query}")
-                
-                # Web検索を実行
-                result_text = self.perform_web_search(search_query)
-                
-                if result_text:
-                    if debug_mode:
-                        st.code(f"検索結果（最初の300文字）: {result_text[:300]}...")
-                    
-                    # 電話番号を抽出（複数パターン対応）
-                    phone = self.extract_phone_number_enhanced(result_text, facility_name, debug_mode)
-                    if phone and not best_phone:
-                        best_phone = phone
-                        if debug_mode:
-                            st.success(f"✅ 電話番号発見: {phone}")
-                    
-                    # メールアドレス抽出
-                    email = self.extract_email_enhanced(result_text, facility_name, debug_mode)
-                    if email and not best_email:
-                        best_email = email
-                        if debug_mode:
-                            st.success(f"✅ メールアドレス発見: {email}")
-                    
-                    # 代表者名抽出
-                    representative = self.extract_representative_enhanced(result_text, facility_name, debug_mode)
-                    if representative and not best_representative:
-                        best_representative = representative
-                        if debug_mode:
-                            st.success(f"✅ 代表者名発見: {representative}")
-                    
-                    # 十分な情報が集まったら早期終了
-                    if best_phone and best_email:
-                        break
-                
-                # レート制限
-                time.sleep(1)
+                    st.success(f"✅ Google Places API: 電話番号取得成功 - {phone_from_maps}")
+            else:
+                if debug_mode:
+                    st.warning("⚠️ Google Places API: 電話番号が見つかりませんでした")
             
-            contact_info["phone"] = best_phone
-            contact_info["email"] = best_email
-            contact_info["representative"] = best_representative
+            # メールアドレスと代表者名は取得しない
+            contact_info["email"] = ""
+            contact_info["representative"] = ""
             
             if debug_mode:
                 st.json({
                     "電話番号": contact_info["phone"] or "見つかりませんでした",
-                    "メールアドレス": contact_info["email"] or "見つかりませんでした", 
-                    "代表者": contact_info["representative"] or "見つかりませんでした"
+                    "メールアドレス": "取得対象外（常に空欄）", 
+                    "代表者": "取得対象外（常に空欄）"
                 })
             
             return contact_info
             
         except Exception as e:
             if debug_mode:
-                st.error(f"🔍 Web検索エラー: {str(e)}")
+                st.error(f"🔍 連絡先検索エラー: {str(e)}")
             return contact_info
     
-    def extract_phone_number_enhanced(self, text, facility_name, debug_mode=False):
-        """強化された電話番号抽出"""
-        # 複数の電話番号パターン
-        phone_patterns = [
-            # TEL: 形式
-            re.compile(r'(?:TEL|Tel|tel|電話|☎)[:：\s]*(\d{2,4}[-‐\s]?\d{2,4}[-‐\s]?\d{4})'),
-            # お問い合わせ: 形式
-            re.compile(r'(?:お問い合わせ|問い合わせ|連絡先)[:：\s]*(\d{2,4}[-‐\s]?\d{2,4}[-‐\s]?\d{4})'),
-            # 代表電話: 形式
-            re.compile(r'(?:代表|本社|受付)[:：\s]*(\d{2,4}[-‐\s]?\d{2,4}[-‐\s]?\d{4})'),
-            # 一般的な電話番号パターン
-            re.compile(r'(\d{2,4}[-‐]\d{2,4}[-‐]\d{4})'),
-            # ハイフンなし（10-11桁）
-            re.compile(r'(\d{10,11})'),
-        ]
-        
-        best_phone = ""
-        
-        for pattern in phone_patterns:
-            matches = pattern.findall(text)
-            for match in matches:
-                # 電話番号の妥当性チェック
-                clean_phone = re.sub(r'[-‐\s]', '', match)
-                
-                # 10-11桁であることを確認
-                if 10 <= len(clean_phone) <= 11:
-                    # 先頭が0で始まることを確認（日本の電話番号）
-                    if clean_phone.startswith('0'):
-                        # ハイフンで整形
-                        if len(clean_phone) == 10:
-                            formatted_phone = f"{clean_phone[:3]}-{clean_phone[3:6]}-{clean_phone[6:]}"
-                        else:  # 11桁
-                            formatted_phone = f"{clean_phone[:3]}-{clean_phone[3:7]}-{clean_phone[7:]}"
-                        
-                        if debug_mode:
-                            st.info(f"📞 電話番号候補: {formatted_phone}")
-                        
-                        return formatted_phone
-        
-        return best_phone
-    
-    def extract_email_enhanced(self, text, facility_name, debug_mode=False):
-        """強化されたメールアドレス抽出"""
-        # メールアドレスパターン
-        email_patterns = [
-            # 一般的なメールアドレス
-            re.compile(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'),
-            # info@形式を優先
-            re.compile(r'(info@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'),
-            # contact@形式を優先
-            re.compile(r'(contact@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'),
-        ]
-        
-        # 除外すべきドメインリスト
-        exclude_domains = [
-            'google', 'youtube', 'facebook', 'twitter', 'instagram', 
-            'linkedin', 'example', 'noreply', 'duckduckgo', 'bing',
-            'yahoo', 'gmail', 'hotmail', 'outlook', 'test', 'sample'
-        ]
-        
-        best_email = ""
-        
-        for pattern in email_patterns:
-            matches = pattern.findall(text)
-            for email in matches:
-                # 除外ドメインチェック
-                if not any(domain in email.lower() for domain in exclude_domains):
-                    # 画像ファイル等を除外
-                    if not any(ext in email.lower() for ext in ['.png', '.jpg', '.jpeg', '.gif', '.css', '.js']):
-                        if debug_mode:
-                            st.info(f"📧 メールアドレス候補: {email}")
-                        return email
-        
-        return best_email
-    
-    def extract_representative_enhanced(self, text, facility_name, debug_mode=False):
-        """強化された代表者名抽出"""
-        # 代表者名パターン
-        representative_patterns = [
-            re.compile(r'(?:代表取締役|社長|代表者|CEO|会長|理事長|院長|所長|代表)[:：\s]*([^\s\n]{2,10})', re.MULTILINE),
-            re.compile(r'([^\s\n]{2,6})\s*(?:代表取締役|社長|CEO)', re.MULTILINE),
-            re.compile(r'代表[:：]\s*([^\s\n]{2,10})', re.MULTILINE),
-        ]
-        
-        for pattern in representative_patterns:
-            matches = pattern.findall(text)
-            for match in matches:
-                # 日本語名らしい文字列かチェック
-                if len(match) >= 2 and len(match) <= 8:
-                    # 数字や記号が含まれていないかチェック
-                    if not re.search(r'[0-9\-_@.]', match):
-                        if debug_mode:
-                            st.info(f"👤 代表者候補: {match}")
-                        return match
-        
-        return ""
-    
-    def perform_web_search(self, search_term):
-        """Web検索を実行する"""
+    def get_phone_number_from_google_places(self, facility_name, debug_mode=False):
+        """Google Places APIを使用して電話番号を取得"""
         try:
+            # google_places_api.pyをインポート
+            import sys
             import os
-            import platform
             
-            # クラウド環境検出
-            cloud_indicators = [
-                'STREAMLIT_CLOUD' in os.environ,
-                'STREAMLIT_SHARING_MODE' in os.environ, 
-                'HOSTNAME' in os.environ and 'streamlit' in os.environ.get('HOSTNAME', '').lower(),
-                platform.node() and 'streamlit' in platform.node().lower(),
-                'USER' in os.environ and os.environ.get('USER') == 'appuser',
-                'HOME' in os.environ and '/home/appuser' in os.environ.get('HOME', ''),
-                'STREAMLIT_SERVER_HEADLESS' in os.environ
-            ]
+            # 現在のディレクトリの親ディレクトリ（google_places_api.pyがある場所）をパスに追加
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            parent_dir = os.path.dirname(current_dir)
+            if parent_dir not in sys.path:
+                sys.path.append(parent_dir)
             
-            is_cloud_env = any(cloud_indicators)
+            from google_places_api import get_phone_number_from_facility_name
             
-            if is_cloud_env:
-                # クラウド環境では検索を無効化
-                return ""
+            if debug_mode:
+                st.info(f"🗺️ Google Maps検索実行: {facility_name}")
             
-            # 検索エンジンのリスト
-            search_engines = [
-                {
-                    'name': 'DuckDuckGo',
-                    'url': f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(search_term)}",
-                },
-                {
-                    'name': 'Bing',
-                    'url': f"https://www.bing.com/search?q={urllib.parse.quote(search_term)}",
-                }
-            ]
+            # Google Places APIで電話番号を取得
+            phone_number = get_phone_number_from_facility_name(facility_name)
             
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'ja,en-US;q=0.5',
-                'Accept-Encoding': 'gzip, deflate',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1'
-            }
-            
-            for engine in search_engines:
-                try:
-                    response = requests.get(engine['url'], headers=headers, timeout=15)
-                    if response.status_code == 200:
-                        soup = BeautifulSoup(response.text, 'html.parser')
-                        
-                        results = []
-                        
-                        if 'duckduckgo' in engine['url']:
-                            # DuckDuckGo HTML結果の解析
-                            result_elements = soup.find_all(['h2', 'span'], class_=lambda x: x and 'result' in str(x))
-                            snippet_elements = soup.find_all('a', class_='result__snippet')
-                            
-                            for elem in result_elements[:3]:
-                                text = elem.get_text(strip=True)
-                                if text and len(text) > 10:
-                                    results.append(text)
-                            
-                            for elem in snippet_elements[:3]:
-                                text = elem.get_text(strip=True)
-                                if text and len(text) > 10:
-                                    results.append(text)
-                        
-                        elif 'bing' in engine['url']:
-                            # Bing結果の解析
-                            result_elements = soup.find_all('h2')
-                            snippet_elements = soup.find_all('p')
-                            
-                            for elem in result_elements[:3]:
-                                text = elem.get_text(strip=True)
-                                if text and len(text) > 10:
-                                    results.append(text)
-                            
-                            for elem in snippet_elements[:3]:
-                                text = elem.get_text(strip=True)
-                                if text and len(text) > 20:
-                                    results.append(text)
-                        
-                        if results:
-                            return " ".join(results[:5])  # 上位5件まで
-                    
-                    # 各エンジンの間に少し待機
-                    time.sleep(2)
-                    
-                except requests.exceptions.RequestException:
-                    continue
-            
-            return ""
-            
-        except Exception:
-            return ""
+            if phone_number:
+                if debug_mode:
+                    st.success(f"✅ Google Maps: {phone_number}")
+                return phone_number
+            else:
+                if debug_mode:
+                    st.warning("⚠️ Google Maps: 電話番号が見つかりませんでした")
+                return None
+                
+        except ImportError as e:
+            if debug_mode:
+                st.error(f"Google Places APIモジュールのインポートに失敗: {e}")
+            return None
+        except Exception as e:
+            if debug_mode:
+                st.error(f"Google Places API検索エラー: {str(e)}")
+            return None
+    
+
+    
+
+
     
     def extract_jobs_from_page(self, soup, page_url, debug_mode=False):
         """検索結果ページからJSON構造化データを使用して求人情報を直接抽出"""
@@ -576,7 +388,8 @@ class KyujinboxScraper:
                                 'title': job_data.get('title'),
                                 'workArea': job_data.get('workArea'),
                                 'url': job_data.get('url'),
-                                'uniqueId': job_data.get('uniqueId')
+                                'uniqueId': job_data.get('uniqueId'),
+                                'rdUrl': job_data.get('rdUrl')  # 正しい詳細ページのパス
                             })
                         
                         # 求人情報を抽出・整形
@@ -600,9 +413,19 @@ class KyujinboxScraper:
                         job_info['business_content'] = job_info['title']
                         
                         # WebサイトURLとして求人ボックスの詳細URLを構築
+                        # rdUrlが存在する場合はそれを優先、なければuniqueIdを使用
+                        rd_url = job_data.get('rdUrl', '')
                         unique_id = job_info.get('unique_id', '')
-                        if unique_id:
-                            job_info['website_url'] = f"{self.base_url}/jb/{unique_id}"
+                        
+                        if rd_url:
+                            # rdUrlは通常 "/jbi/xxxxx" の形式で返される
+                            if rd_url.startswith('/'):
+                                job_info['website_url'] = f"{self.base_url.rstrip('/')}{rd_url}"
+                            else:
+                                job_info['website_url'] = f"{self.base_url}jbi/{rd_url}"
+                        elif unique_id:
+                            # フォールバック: uniqueIdを使用
+                            job_info['website_url'] = f"{self.base_url}jbi/{unique_id}"
                         else:
                             job_info['website_url'] = ''
                         
@@ -618,7 +441,8 @@ class KyujinboxScraper:
                                     'work_area': job_info['work_area'],
                                     'website_url': job_info['website_url'],
                                     'original_url': job_info['original_url'],
-                                    'unique_id': job_info['unique_id']
+                                    'unique_id': job_info['unique_id'],
+                                    'rd_url': rd_url  # デバッグ用
                                 })
                         else:
                             if debug_mode and idx < 3:
@@ -902,13 +726,16 @@ class KyujinboxScraper:
                     if debug_mode and len(all_jobs) < 3:
                         st.info(f"🐛 DEBUG: 求人 {len(all_jobs) + 1} を処理中: {job.get('facility_name', 'Unknown')}")
                     
-                    # Web検索で連絡先情報を取得
+                    # Web検索で連絡先情報を取得（住所情報も含む）
                     if job.get('facility_name'):
                         if debug_mode and len(all_jobs) < 2:  # 最初の2件のみ詳細なWeb検索ログを表示
                             st.info(f"🔍 施設名 '{job['facility_name']}' のWeb検索を開始...")
+                            if job.get('address'):
+                                st.info(f"🏢 住所情報: {job['address'][:100]}...")
                         
                         contact_info = self.search_contact_info_web(
                             job['facility_name'], 
+                            address=job.get('address', ''),
                             debug_mode=(debug_mode and len(all_jobs) < 2)
                         )
                         job.update(contact_info)
@@ -1004,8 +831,8 @@ class KyujinboxUI:
         # 取得件数設定
         max_jobs = st.selectbox(
             "取得件数を選択",
-            [10, 20, 30, 50, 100],
-            index=0,  # デフォルトで10件
+            [1, 10, 20, 30, 50, 100],
+            index=1,  # デフォルトで10件
             key="kyujinbox_max_jobs",
             help="取得する求人の最大件数を選択してください（上限100件）"
         )

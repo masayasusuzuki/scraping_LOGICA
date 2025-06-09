@@ -532,7 +532,7 @@ class BiyouNurseUI:
             return contact_info
 
     def search_contact_info_advanced(self, facility_name):
-        """Web検索APIを使用して施設の連絡先情報を取得"""
+        """Google Places APIを使用して施設の連絡先情報を取得"""
         contact_info = {
             '電話番号': '',
             'メールアドレス': ''
@@ -544,198 +544,51 @@ class BiyouNurseUI:
             return basic_info
         
         try:
-            # 実際のWeb検索を実行
-            search_query = f"{facility_name} 電話番号 連絡先"
+            st.info(f"🔍 {facility_name} の連絡先をGoogle Mapsで検索中...")
             
-            st.info(f"🔍 {facility_name} の連絡先を検索中...")
+            # Google Places APIで電話番号を取得
+            phone_number = self.get_phone_number_from_google_places(facility_name)
             
-            # perform_web_searchメソッドを使用して検索を実行
-            result_text = self.perform_web_search(search_query)
-            
-            if result_text:
-                # 検索結果から電話番号を抽出
-                # 電話番号パターンを検索
-                phone_patterns = [
-                    r'(0120[-‐\s]?\d{2,3}[-‐\s]?\d{3,4})',     # フリーダイヤル
-                    r'(\d{2,4}[-‐\s]?\d{2,4}[-‐\s]?\d{3,4})',  # 一般的な電話番号
-                    r'(\d{3}[-‐\s]?\d{3}[-‐\s]?\d{4})'        # 3-3-4形式
-                ]
-                
-                for pattern in phone_patterns:
-                    matches = re.findall(pattern, result_text)
-                    if matches:
-                        # 最初に見つかった電話番号を使用
-                        phone_number = matches[0]
-                        # 整形
-                        if isinstance(phone_number, tuple):
-                            phone_number = phone_number[0] if phone_number[0] else matches[0]
-                        contact_info['電話番号'] = phone_number.replace(' ', '-')
-                        break
-                
-                # メールアドレスパターンを検索
-                email_pattern = r'[\w\.-]+@[\w\.-]+\.\w+'
-                email_matches = re.findall(email_pattern, result_text)
-                
-                if email_matches:
-                    # 一般的なドメインを除外
-                    valid_emails = [email for email in email_matches 
-                                  if not any(skip in email.lower() for skip in 
-                                           ['google', 'youtube', 'facebook', 'twitter', 'example', 'noreply', 'duckduckgo'])]
-                    if valid_emails:
-                        contact_info['メールアドレス'] = valid_emails[0]
-                
-                if contact_info['電話番号'] or contact_info['メールアドレス']:
-                    st.success(f"✅ {facility_name} の連絡先情報を取得しました")
-                else:
-                    st.warning(f"⚠️ {facility_name} の連絡先情報は見つかりませんでした")
+            if phone_number:
+                contact_info['電話番号'] = phone_number
+                st.success(f"✅ {facility_name} の電話番号を取得しました: {phone_number}")
             else:
-                st.warning(f"⚠️ {facility_name} の検索結果が取得できませんでした")
+                st.warning(f"⚠️ {facility_name} の電話番号が見つかりませんでした")
+            
+            # メールアドレスは取得しない（常に空欄）
+            contact_info['メールアドレス'] = ''
             
             return contact_info
             
         except Exception as e:
-            st.warning(f"Web検索でエラーが発生しました: {str(e)}")
-            return self.search_contact_info(facility_name)
+            st.warning(f"Google Places API検索でエラーが発生しました: {str(e)}")
+            return basic_info
 
-    def perform_web_search(self, search_term):
-        """Web検索を実行する（複数検索エンジン対応・フォールバック機能付き）"""
+    def get_phone_number_from_google_places(self, facility_name):
+        """Google Places APIを使用して電話番号を取得"""
         try:
-            # 環境判定（Streamlit Cloud環境の検出）
+            # google_places_api.pyをインポート
+            import sys
             import os
-            import platform
             
-            # より正確なクラウド環境検出
-            cloud_indicators = [
-                'STREAMLIT_CLOUD' in os.environ,
-                'STREAMLIT_SHARING_MODE' in os.environ, 
-                'HOSTNAME' in os.environ and 'streamlit' in os.environ.get('HOSTNAME', '').lower(),
-                platform.node() and 'streamlit' in platform.node().lower(),
-                'USER' in os.environ and os.environ.get('USER') == 'appuser',
-                'HOME' in os.environ and '/home/appuser' in os.environ.get('HOME', ''),
-                'STREAMLIT_SERVER_HEADLESS' in os.environ
-            ]
+            # 現在のディレクトリの親ディレクトリ（google_places_api.pyがある場所）をパスに追加
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            parent_dir = os.path.dirname(current_dir)
+            if parent_dir not in sys.path:
+                sys.path.append(parent_dir)
             
-            is_cloud_env = any(cloud_indicators)
+            from google_places_api import get_phone_number_from_facility_name
             
-            if is_cloud_env:
-                st.warning("⚠️ クラウド環境ではWeb検索機能が制限されています。既知のクリニック情報のみ提供します。")
+            # Google Places APIで電話番号を取得
+            phone_number = get_phone_number_from_facility_name(facility_name)
+            
+            return phone_number
                 
-                # デバッグ情報（デバッグモードの場合のみ表示）
-                if st.session_state.get('biyou_debug', False):
-                    with st.expander("🔧 環境デバッグ情報"):
-                        st.code(f"""
-環境変数チェック:
-- STREAMLIT_CLOUD: {os.environ.get('STREAMLIT_CLOUD', 'Not set')}
-- STREAMLIT_SHARING_MODE: {os.environ.get('STREAMLIT_SHARING_MODE', 'Not set')}
-- HOSTNAME: {os.environ.get('HOSTNAME', 'Not set')}
-- USER: {os.environ.get('USER', 'Not set')}
-- HOME: {os.environ.get('HOME', 'Not set')}
-- Platform node: {platform.node()}
-- Cloud indicators: {cloud_indicators}
-                        """)
-                
-                return ""
-            
-            # 検索エンジンのリスト（優先順位順）
-            search_engines = [
-                {
-                    'name': 'DuckDuckGo Instant',
-                    'url': f"https://api.duckduckgo.com/?q={requests.utils.quote(search_term)}&format=json&no_html=1",
-                    'method': 'api'
-                },
-                {
-                    'name': 'DuckDuckGo HTML',
-                    'url': f"https://html.duckduckgo.com/html/?q={requests.utils.quote(search_term)}",
-                    'method': 'html'
-                },
-                {
-                    'name': 'Bing',
-                    'url': f"https://www.bing.com/search?q={requests.utils.quote(search_term)}",
-                    'method': 'html'
-                }
-            ]
-            
-            # User-Agentを強化
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'ja,en-US;q=0.5',
-                'Accept-Encoding': 'gzip, deflate',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1'
-            }
-            
-            for engine in search_engines:
-                try:
-                    st.info(f"🔍 {engine['name']}で検索中...")
-                    
-                    if engine['method'] == 'api':
-                        # DuckDuckGo APIを使用
-                        response = requests.get(engine['url'], headers=headers, timeout=15)
-                        if response.status_code == 200:
-                            data = response.json()
-                            if 'AbstractText' in data and data['AbstractText']:
-                                return data['AbstractText']
-                            elif 'Answer' in data and data['Answer']:
-                                return data['Answer']
-                    
-                    elif engine['method'] == 'html':
-                        # HTML解析
-                        response = requests.get(engine['url'], headers=headers, timeout=15)
-                        if response.status_code == 200:
-                            soup = BeautifulSoup(response.text, 'html.parser')
-                            
-                            results = []
-                            
-                            if 'duckduckgo' in engine['url']:
-                                # DuckDuckGo HTML結果の解析
-                                result_elements = soup.find_all(['h2', 'span'], class_=lambda x: x and 'result' in str(x))
-                                snippet_elements = soup.find_all('a', class_='result__snippet')
-                                
-                                for elem in result_elements[:3]:
-                                    text = elem.get_text(strip=True)
-                                    if text and len(text) > 10:
-                                        results.append(text)
-                                
-                                for elem in snippet_elements[:3]:
-                                    text = elem.get_text(strip=True)
-                                    if text and len(text) > 10:
-                                        results.append(text)
-                            
-                            elif 'bing' in engine['url']:
-                                # Bing結果の解析
-                                result_elements = soup.find_all('h2')
-                                snippet_elements = soup.find_all('p')
-                                
-                                for elem in result_elements[:3]:
-                                    text = elem.get_text(strip=True)
-                                    if text and len(text) > 10:
-                                        results.append(text)
-                                
-                                for elem in snippet_elements[:3]:
-                                    text = elem.get_text(strip=True)
-                                    if text and len(text) > 20:
-                                        results.append(text)
-                            
-                            if results:
-                                st.success(f"✅ {engine['name']}から情報を取得しました")
-                                return " ".join(results[:5])  # 上位5件まで
-                    
-                    # 各エンジンの間に少し待機
-                    time.sleep(2)
-                    
-                except requests.exceptions.RequestException as e:
-                    st.warning(f"⚠️ {engine['name']}への接続に失敗: {str(e)}")
-                    continue
-                except Exception as e:
-                    st.warning(f"⚠️ {engine['name']}でエラー: {str(e)}")
-                    continue
-            
-            # すべての検索エンジンが失敗した場合
-            st.warning("⚠️ すべての検索エンジンからの情報取得に失敗しました")
-            return ""
-            
+        except ImportError as e:
+            st.error(f"Google Places APIモジュールのインポートに失敗: {e}")
+            return None
         except Exception as e:
-            st.warning(f"検索エラー: {str(e)}")
-            return "" 
+            st.error(f"Google Places API検索エラー: {str(e)}")
+            return None
+
+ 

@@ -606,8 +606,8 @@ class BiyouNurseUI:
             
             # より正確なクラウド環境検出
             cloud_indicators = [
-                'STREAMLIT_CLOUD',
-                'STREAMLIT_SHARING_MODE', 
+                'STREAMLIT_CLOUD' in os.environ,
+                'STREAMLIT_SHARING_MODE' in os.environ, 
                 'HOSTNAME' in os.environ and 'streamlit' in os.environ.get('HOSTNAME', '').lower(),
                 platform.node() and 'streamlit' in platform.node().lower(),
                 'USER' in os.environ and os.environ.get('USER') == 'appuser',

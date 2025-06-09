@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from scrapers.torabayu_scraper import TorabayuUI
 from scrapers.biyou_nurse import BiyouNurseUI
+from scrapers.kyujinbox_scraper import KyujinboxUI
 
 # ページ設定
 st.set_page_config(
@@ -15,180 +16,7 @@ st.set_page_config(
     }
 )
 
-# パスワード認証機能
-def check_password():
-    """パスワード認証を確認"""
-    def password_entered():
-        """ユーザーがパスワードを入力したときに呼ばれる"""
-        if st.session_state["password"] == "Logica0312":
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]  # パスワードをセッションから削除（セキュリティ）
-        else:
-            st.session_state["password_correct"] = False
 
-    if "password_correct" not in st.session_state:
-        # タイトルとサブタイトルを黒色で表示（縦軸中央配置）
-        st.markdown("""
-        <style>
-        .auth-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            padding-top: 15vh;
-            text-align: center;
-        }
-        
-        .simple-title {
-            font-family: 'Arial', 'Helvetica', sans-serif;
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-color, #000000) !important;
-            text-align: center;
-            margin-bottom: 0.5rem;
-            letter-spacing: 3px;
-        }
-        
-        .simple-subtitle {
-            font-family: 'Arial', 'Helvetica', sans-serif;
-            font-size: 0.9rem;
-            color: var(--text-color, #000000) !important;
-            text-align: center;
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        /* ダークモード時の認証画面タイトル - より強力なセレクタ */
-        [data-theme="dark"] .simple-title,
-        .stApp[data-theme="dark"] .simple-title,
-        html[data-theme="dark"] .simple-title {
-            color: #ffffff !important;
-        }
-        
-        [data-theme="dark"] .simple-subtitle,
-        .stApp[data-theme="dark"] .simple-subtitle,
-        html[data-theme="dark"] .simple-subtitle {
-            color: #ffffff !important;
-        }
-        
-        /* Streamlitのダークモード検出 */
-        .stApp[data-baseweb-theme="dark"] .simple-title {
-            color: #ffffff !important;
-        }
-        
-        .stApp[data-baseweb-theme="dark"] .simple-subtitle {
-            color: #ffffff !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # 中央配置コンテナの開始
-        st.markdown('<div class="auth-container">', unsafe_allow_html=True)
-        
-        # タイトルとサブタイトル
-        st.markdown('<div class="simple-title">LOGICA SCRAPING</div>', unsafe_allow_html=True)
-        st.markdown('<div class="simple-subtitle">Authentication Required</div>', unsafe_allow_html=True)
-        
-        # 入力フィールド
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            st.text_input(
-                "Access Code", 
-                on_change=password_entered, 
-                key="password",
-                placeholder="Enter authentication code"
-            )
-        
-        # 中央配置コンテナの終了
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        return False
-    elif not st.session_state["password_correct"]:
-        # エラー時のタイトルとサブタイトルを黒色で表示（縦軸中央配置）
-        st.markdown("""
-        <style>
-        .auth-error-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            padding-top: 15vh;
-            text-align: center;
-        }
-        
-        .simple-error-title {
-            font-family: 'Arial', 'Helvetica', sans-serif;
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-color, #000000) !important;
-            text-align: center;
-            margin-bottom: 0.5rem;
-            letter-spacing: 3px;
-        }
-        
-        .simple-error-message {
-            font-family: 'Arial', 'Helvetica', sans-serif;
-            font-size: 0.9rem;
-            color: var(--text-color, #000000) !important;
-            text-align: center;
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        /* ダークモード時のエラー画面タイトル - より強力なセレクタ */
-        [data-theme="dark"] .simple-error-title,
-        .stApp[data-theme="dark"] .simple-error-title,
-        html[data-theme="dark"] .simple-error-title {
-            color: #ffffff !important;
-        }
-        
-        [data-theme="dark"] .simple-error-message,
-        .stApp[data-theme="dark"] .simple-error-message,
-        html[data-theme="dark"] .simple-error-message {
-            color: #ffffff !important;
-        }
-        
-        /* Streamlitのダークモード検出 */
-        .stApp[data-baseweb-theme="dark"] .simple-error-title {
-            color: #ffffff !important;
-        }
-        
-        .stApp[data-baseweb-theme="dark"] .simple-error-message {
-            color: #ffffff !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # エラー時の中央配置コンテナの開始
-        st.markdown('<div class="auth-error-container">', unsafe_allow_html=True)
-        
-        # タイトルとエラーメッセージ
-        st.markdown('<div class="simple-error-title">LOGICA SCRAPING</div>', unsafe_allow_html=True)
-        st.markdown('<div class="simple-error-message">Invalid Authentication Code</div>', unsafe_allow_html=True)
-        
-        # 入力フィールド
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            st.text_input(
-                "Access Code", 
-                on_change=password_entered, 
-                key="password",
-                placeholder="Retry authentication code"
-            )
-        
-        # エラー時の中央配置コンテナの終了
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        return False
-    else:
-        # パスワードが正しい場合
-        return True
-
-# パスワード認証をチェック
-if not check_password():
-    st.stop()
 
 # ライトモード・ダークモード両対応のCSS
 st.markdown("""
@@ -464,7 +292,8 @@ if main_menu == "スクレイピング":
         "とらばーゆ東京",
         "とらばーゆ神奈川", 
         "とらばーゆ千葉",
-        "とらばーゆ埼玉"
+        "とらばーゆ埼玉",
+        "求人ボックス"
     ]
 
     selected_scraper = st.sidebar.radio(
@@ -503,6 +332,11 @@ if main_menu == "スクレイピング":
         # とらばーゆ埼玉UIを表示
         torabayu_ui = TorabayuUI(region="saitama")
         df_result = torabayu_ui.render_ui()
+
+    elif selected_scraper == "求人ボックス":
+        # 求人ボックスUIを表示
+        kyujinbox_ui = KyujinboxUI()
+        df_result = kyujinbox_ui.render_ui()
 
 elif main_menu == "機能改善":
     import os
@@ -826,6 +660,6 @@ st.divider()
 st.markdown("""
 <div style='text-align: center; color: #666; font-size: 14px;'>
     <p>LOGICA SCRAPING</p>
-    <p>対応サイト: 美容ナース.com、とらばーゆ（東京・神奈川・千葉・埼玉）</p>
+    <p>対応サイト: 美容ナース.com、とらばーゆ（東京・神奈川・千葉・埼玉）、求人ボックス</p>
 </div>
 """, unsafe_allow_html=True) 

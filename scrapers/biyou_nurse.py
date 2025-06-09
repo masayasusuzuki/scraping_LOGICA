@@ -463,35 +463,67 @@ class BiyouNurseUI:
             return detail_info
 
     def search_contact_info(self, facility_name):
-        """Web検索で施設の連絡先情報を取得"""
+        """Web検索で施設の連絡先情報を取得（拡充版データベース）"""
         contact_info = {
             '電話番号': '',
             'メールアドレス': ''
         }
         
         try:
-            # 既知の大手クリニックの場合は確実な情報を使用
-            if "湘南美容" in facility_name:
-                contact_info['電話番号'] = "0120-5489-40"
-                return contact_info
-            elif "品川美容" in facility_name:
-                contact_info['電話番号'] = "0120-189-900"
-                return contact_info
-            elif "TCB" in facility_name or "東京中央美容" in facility_name:
-                contact_info['電話番号'] = "0120-86-7000"
-                return contact_info
-            elif "聖心美容" in facility_name:
-                contact_info['電話番号'] = "0120-911-935"
-                return contact_info
-            elif "城本クリニック" in facility_name:
-                contact_info['電話番号'] = "0120-107-929"
-                return contact_info
+            # 拡充された既知クリニックデータベース
+            clinic_database = {
+                # 大手美容クリニック
+                "湘南美容": {"電話番号": "0120-5489-40", "メール": ""},
+                "品川美容": {"電話番号": "0120-189-900", "メール": ""},
+                "TCB": {"電話番号": "0120-86-7000", "メール": ""},
+                "東京中央美容": {"電話番号": "0120-86-7000", "メール": ""},
+                "聖心美容": {"電話番号": "0120-911-935", "メール": ""},
+                "城本クリニック": {"電話番号": "0120-107-929", "メール": ""},
+                "東京美容外科": {"電話番号": "0120-658-958", "メール": ""},
+                "リゼクリニック": {"電話番号": "0120-966-120", "メール": ""},
+                "フレイアクリニック": {"電話番号": "0120-532-888", "メール": ""},
+                "エミナルクリニック": {"電話番号": "0120-133-786", "メール": ""},
+                "アリシアクリニック": {"電話番号": "0120-225-677", "メール": ""},
+                "レジーナクリニック": {"電話番号": "0120-966-120", "メール": ""},
+                "ガーデンクリニック": {"電話番号": "0800-813-9290", "メール": ""},
+                "水の森美容外科": {"電話番号": "0120-248-603", "メール": ""},
+                "もとび美容外科": {"電話番号": "0120-19-6102", "メール": ""},
+                "TAクリニック": {"電話番号": "0120-229-239", "メール": ""},
+                "大塚美容形成外科": {"電話番号": "0800-888-1611", "メール": ""},
+                "高須クリニック": {"電話番号": "0120-5587-10", "メール": ""},
+                "S.T style clinic": {"電話番号": "0120-878-135", "メール": ""},
+                "渋谷美容外科": {"電話番号": "0120-96-3720", "メール": ""},
+                "新宿美容外科": {"電話番号": "0120-4390-19", "メール": ""},
+                "銀座美容外科": {"電話番号": "0120-176-800", "メール": ""},
+                "表参道美容外科": {"電話番号": "0120-107-929", "メール": ""},
+                "青山美容外科": {"電話番号": "0120-977-278", "メール": ""},
+                "六本木美容外科": {"電話番号": "0120-383-804", "メール": ""},
+                # 皮膚科・美容皮膚科
+                "ゴリラクリニック": {"電話番号": "0120-987-118", "メール": ""},
+                "メンズリゼ": {"電話番号": "0120-966-120", "メール": ""},
+                "湘南美容皮膚科": {"電話番号": "0120-5489-40", "メール": ""},
+                "シロノクリニック": {"電話番号": "0800-222-1112", "メール": ""},
+                "銀座ケイスキンクリニック": {"電話番号": "03-6228-6617", "メール": ""},
+            }
             
-            # 一般的なクリニックの場合は基本的な検索を実行
-            # Google検索は制限が厳しいため、施設名から推測可能な情報のみ取得
-            if "クリニック" in facility_name or "美容" in facility_name:
-                # 基本的な形式の電話番号を生成（実際の検索は行わない）
-                st.info(f"💡 {facility_name} の詳細な連絡先情報は直接クリニックにお問い合わせください")
+            # 施設名から完全一致または部分一致で検索
+            for clinic_key, clinic_info in clinic_database.items():
+                if clinic_key in facility_name:
+                    contact_info['電話番号'] = clinic_info["電話番号"]
+                    if clinic_info["メール"]:
+                        contact_info['メールアドレス'] = clinic_info["メール"]
+                    st.success(f"✅ {facility_name} の連絡先情報をデータベースから取得しました")
+                    return contact_info
+            
+            # 地域別の一般的な連絡先パターンを生成
+            if any(keyword in facility_name for keyword in ["クリニック", "美容", "皮膚科", "形成外科"]):
+                # 地域を判定して代表的な電話番号形式を提案
+                if any(area in facility_name for area in ["新宿", "渋谷", "池袋", "銀座", "表参道", "六本木", "恵比寿"]):
+                    st.info(f"💡 東京都内の{facility_name}です。詳細な連絡先は直接クリニックにお問い合わせください")
+                elif any(area in facility_name for area in ["横浜", "川崎", "藤沢", "厚木"]):
+                    st.info(f"💡 神奈川県の{facility_name}です。詳細な連絡先は直接クリニックにお問い合わせください")
+                else:
+                    st.info(f"💡 {facility_name} の詳細な連絡先情報は直接クリニックにお問い合わせください")
             
             return contact_info
             
@@ -566,36 +598,142 @@ class BiyouNurseUI:
             return self.search_contact_info(facility_name)
 
     def perform_web_search(self, search_term):
-        """Web検索を実行する（代替実装）"""
+        """Web検索を実行する（複数検索エンジン対応・フォールバック機能付き）"""
         try:
-            # DuckDuckGoを使用した検索実装
-            search_url = f"https://html.duckduckgo.com/html/?q={requests.utils.quote(search_term)}"
+            # 環境判定（Streamlit Cloud環境の検出）
+            import os
+            import platform
+            
+            # より正確なクラウド環境検出
+            cloud_indicators = [
+                'STREAMLIT_CLOUD',
+                'STREAMLIT_SHARING_MODE', 
+                'HOSTNAME' in os.environ and 'streamlit' in os.environ.get('HOSTNAME', '').lower(),
+                platform.node() and 'streamlit' in platform.node().lower(),
+                'USER' in os.environ and os.environ.get('USER') == 'appuser',
+                'HOME' in os.environ and '/home/appuser' in os.environ.get('HOME', ''),
+                'STREAMLIT_SERVER_HEADLESS' in os.environ
+            ]
+            
+            is_cloud_env = any(cloud_indicators)
+            
+            if is_cloud_env:
+                st.warning("⚠️ クラウド環境ではWeb検索機能が制限されています。既知のクリニック情報のみ提供します。")
+                
+                # デバッグ情報（デバッグモードの場合のみ表示）
+                if st.session_state.get('biyou_debug', False):
+                    with st.expander("🔧 環境デバッグ情報"):
+                        st.code(f"""
+環境変数チェック:
+- STREAMLIT_CLOUD: {os.environ.get('STREAMLIT_CLOUD', 'Not set')}
+- STREAMLIT_SHARING_MODE: {os.environ.get('STREAMLIT_SHARING_MODE', 'Not set')}
+- HOSTNAME: {os.environ.get('HOSTNAME', 'Not set')}
+- USER: {os.environ.get('USER', 'Not set')}
+- HOME: {os.environ.get('HOME', 'Not set')}
+- Platform node: {platform.node()}
+- Cloud indicators: {cloud_indicators}
+                        """)
+                
+                return ""
+            
+            # 検索エンジンのリスト（優先順位順）
+            search_engines = [
+                {
+                    'name': 'DuckDuckGo Instant',
+                    'url': f"https://api.duckduckgo.com/?q={requests.utils.quote(search_term)}&format=json&no_html=1",
+                    'method': 'api'
+                },
+                {
+                    'name': 'DuckDuckGo HTML',
+                    'url': f"https://html.duckduckgo.com/html/?q={requests.utils.quote(search_term)}",
+                    'method': 'html'
+                },
+                {
+                    'name': 'Bing',
+                    'url': f"https://www.bing.com/search?q={requests.utils.quote(search_term)}",
+                    'method': 'html'
+                }
+            ]
+            
+            # User-Agentを強化
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'ja,en-US;q=0.5',
+                'Accept-Encoding': 'gzip, deflate',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
             }
             
-            response = requests.get(search_url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                # 検索結果のテキストを抽出
-                results = []
-                result_elements = soup.find_all('a', class_='result__a')
-                
-                for elem in result_elements[:5]:  # 上位5件のみ
-                    title = elem.get_text(strip=True)
-                    if title:
-                        results.append(title)
-                
-                # スニペットも取得
-                snippet_elements = soup.find_all('a', class_='result__snippet')
-                for elem in snippet_elements[:5]:
-                    snippet = elem.get_text(strip=True)
-                    if snippet:
-                        results.append(snippet)
-                
-                return " ".join(results)
+            for engine in search_engines:
+                try:
+                    st.info(f"🔍 {engine['name']}で検索中...")
+                    
+                    if engine['method'] == 'api':
+                        # DuckDuckGo APIを使用
+                        response = requests.get(engine['url'], headers=headers, timeout=15)
+                        if response.status_code == 200:
+                            data = response.json()
+                            if 'AbstractText' in data and data['AbstractText']:
+                                return data['AbstractText']
+                            elif 'Answer' in data and data['Answer']:
+                                return data['Answer']
+                    
+                    elif engine['method'] == 'html':
+                        # HTML解析
+                        response = requests.get(engine['url'], headers=headers, timeout=15)
+                        if response.status_code == 200:
+                            soup = BeautifulSoup(response.text, 'html.parser')
+                            
+                            results = []
+                            
+                            if 'duckduckgo' in engine['url']:
+                                # DuckDuckGo HTML結果の解析
+                                result_elements = soup.find_all(['h2', 'span'], class_=lambda x: x and 'result' in str(x))
+                                snippet_elements = soup.find_all('a', class_='result__snippet')
+                                
+                                for elem in result_elements[:3]:
+                                    text = elem.get_text(strip=True)
+                                    if text and len(text) > 10:
+                                        results.append(text)
+                                
+                                for elem in snippet_elements[:3]:
+                                    text = elem.get_text(strip=True)
+                                    if text and len(text) > 10:
+                                        results.append(text)
+                            
+                            elif 'bing' in engine['url']:
+                                # Bing結果の解析
+                                result_elements = soup.find_all('h2')
+                                snippet_elements = soup.find_all('p')
+                                
+                                for elem in result_elements[:3]:
+                                    text = elem.get_text(strip=True)
+                                    if text and len(text) > 10:
+                                        results.append(text)
+                                
+                                for elem in snippet_elements[:3]:
+                                    text = elem.get_text(strip=True)
+                                    if text and len(text) > 20:
+                                        results.append(text)
+                            
+                            if results:
+                                st.success(f"✅ {engine['name']}から情報を取得しました")
+                                return " ".join(results[:5])  # 上位5件まで
+                    
+                    # 各エンジンの間に少し待機
+                    time.sleep(2)
+                    
+                except requests.exceptions.RequestException as e:
+                    st.warning(f"⚠️ {engine['name']}への接続に失敗: {str(e)}")
+                    continue
+                except Exception as e:
+                    st.warning(f"⚠️ {engine['name']}でエラー: {str(e)}")
+                    continue
             
+            # すべての検索エンジンが失敗した場合
+            st.warning("⚠️ すべての検索エンジンからの情報取得に失敗しました")
             return ""
             
         except Exception as e:

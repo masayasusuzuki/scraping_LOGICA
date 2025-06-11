@@ -732,30 +732,35 @@ class KyujinboxScraper:
             details = {}
             page_text = soup.get_text()
             
-            # 施設名（会社名）を詳細ページから取得 - HTMLセレクタで直接抽出
-            facility_name_element = soup.select_one('p.p-detail_head_company')
+            # 施設名（会社名）を詳細ページから取得 - h2.p-detail_title のみ
+            facility_name_element = soup.select_one('h2.p-detail_title')
+            
             if facility_name_element:
                 facility_name = facility_name_element.get_text(strip=True)
-                if facility_name and len(facility_name) > 2:
+                
+                if debug_mode:
+                    st.info(f"🐛 DEBUG: 施設名を取得: '{facility_name}'")
+                
+                # 「非公開」の場合は処理を中断
+                if facility_name == '非公開':
+                    if debug_mode:
+                        st.warning(f"🚫 DEBUG: 施設名が非公開のため除外します: {facility_name}")
+                    return {}, "非公開求人のため除外"
+                
+                # 施設名として妥当かチェック
+                if not self.is_valid_facility_name(facility_name, debug_mode):
+                    if debug_mode:
+                        st.warning(f"🚫 DEBUG: 無効な施設名のため除外します: {facility_name}")
+                    return {}, "無効な施設名のため除外"
+                
+                if facility_name and len(facility_name) > 1:
                     details['facility_name'] = facility_name
                     if debug_mode:
-                        st.success(f"🐛 DEBUG: HTMLから施設名発見: {facility_name}")
+                        st.success(f"🐛 DEBUG: 施設名を設定: {facility_name}")
             else:
-                # フォールバック: 正規表現で施設名を検索
-                facility_patterns = [
-                    re.compile(r'(?:会社名|法人名|施設名|病院名|クリニック名|事業所名|企業名)[:：]?\s*(.+?)(?:\n|$)', re.MULTILINE),
-                    re.compile(r'(?:勤務先|運営会社|運営法人)[:：]?\s*(.+?)(?:\n|$)', re.MULTILINE),
-                ]
-                
-                for pattern in facility_patterns:
-                    facility_matches = pattern.findall(page_text)
-                    if facility_matches:
-                        facility_name = facility_matches[0].strip()[:100]
-                        if len(facility_name) > 2 and facility_name != "企業向けメニュー":
-                            details['facility_name'] = facility_name
-                            if debug_mode:
-                                st.success(f"🐛 DEBUG: 正規表現で施設名発見: {facility_name}")
-                            break
+                if debug_mode:
+                    st.warning("🐛 DEBUG: h2.p-detail_title 要素が見つかりませんでした")
+                return {}, "施設名要素が見つかりません"
             
             # 代表者名は常に空白
             details['representative'] = ''
@@ -879,12 +884,24 @@ class KyujinboxScraper:
                                 debug_mode=(debug_mode and len(all_jobs) < 2)
                             )
                             
+                            # 非公開求人の場合はスキップ
+                            if detail_error and "非公開" in detail_error:
+                                if debug_mode and len(all_jobs) < 2:
+                                    st.warning(f"🚫 非公開求人のためスキップ: {detail_error}")
+                                continue  # この求人をスキップして次の求人へ
+                            
                             if detail_info and not detail_error:
                                 # 詳細ページから施設名のみを更新（電話番号は除外）
                                 if detail_info.get('facility_name') and not job.get('facility_name'):
                                     job['facility_name'] = detail_info['facility_name']
                                     if debug_mode and len(all_jobs) < 2:
                                         st.success(f"📋 詳細ページから施設名を取得: {detail_info['facility_name']}")
+                        
+                        # 施設名が「非公開」関連の場合もスキップ
+                        if job.get('facility_name') in ['非公開', '非公開求人', 'プライベート', 'Private']:
+                            if debug_mode and len(all_jobs) < 2:
+                                st.warning(f"🚫 施設名が非公開のためスキップ: {job.get('facility_name')}")
+                            continue
                         
                         # 電話番号はGoogle Maps検索でのみ取得
                         job.update(contact_info)
@@ -938,7 +955,15 @@ class KyujinboxScraper:
                 elif page_num > max_pages:
                     st.info(f"🐛 DEBUG: 最大ページ数 {max_pages} に到達したため終了")
             
-            return all_jobs, None
+            # 最終フィルタリング: 無効な施設名を持つ求人を除外
+            filtered_jobs = self.filter_valid_jobs(all_jobs, debug_mode)
+            
+            if debug_mode and len(filtered_jobs) != len(all_jobs):
+                excluded_count = len(all_jobs) - len(filtered_jobs)
+                st.warning(f"🚫 最終フィルタリングで {excluded_count} 件の無効な求人を除外しました")
+                st.info(f"✅ 最終結果: {len(filtered_jobs)} 件の有効な求人")
+            
+            return filtered_jobs, None
             
         except Exception as e:
             error_msg = f"スクレイピング中にエラーが発生しました: {str(e)}"
@@ -1029,6 +1054,122 @@ class KyujinboxScraper:
             if debug_mode:
                 st.warning(f"⚠️ 住所クリーンアップエラー: {str(e)}")
             return address_text  # エラー時は元の住所を返す
+    
+    def is_valid_facility_name(self, facility_name, debug_mode=False):
+        """施設名として妥当かどうかをチェック"""
+        if not facility_name:
+            return False
+        
+        # 長すぎる文字列は求人タイトルの可能性が高い
+        if len(facility_name) > 50:
+            if debug_mode:
+                st.info(f"🔍 DEBUG: 文字列が長すぎます（{len(facility_name)}文字）: {facility_name[:30]}...")
+            return False
+        
+        # 求人タイトルでよく使われるキーワードが含まれている場合は除外
+        job_title_keywords = [
+            '未経験', '歓迎', '募集', '職種', '業務', '給与', '月給', '年収', '時給',
+            '勤務', '正社員', 'パート', 'アルバイト', 'バイト', '社員', '契約',
+            '経験者', '新卒', '中途', '転職', '採用', '求人', '応募', 'スタッフ',
+            '社割', '昇給', '賞与', 'ボーナス', '休日', '有給', '福利厚生',
+            'OJT', '研修', '教育', '指導', 'サポート', '成長', 'キャリア',
+            '美容カウンセラー', 'エステティシャン', 'セラピスト', 'ナース', '看護師',
+            'カウンセラー', 'コンシェルジュ', 'アドバイザー', 'コーディネーター',
+            '平均', '万円', '円', '時間', '週', '日', '月', '年', '期',
+            '/', '&', '・', '|', '【', '】', '(', ')', '（', '）', '"', '"'
+        ]
+        
+        # キーワードチェック
+        for keyword in job_title_keywords:
+            if keyword in facility_name:
+                if debug_mode:
+                    st.info(f"🔍 DEBUG: 求人タイトルキーワード '{keyword}' を検出")
+                return False
+        
+        # 数字が多く含まれている場合は除外（給与情報など）
+        digit_count = sum(1 for char in facility_name if char.isdigit())
+        if digit_count > 5:
+            if debug_mode:
+                st.info(f"🔍 DEBUG: 数字が多すぎます（{digit_count}個）")
+            return False
+        
+        # 特殊文字が多い場合は除外
+        special_chars = ['/', '&', '・', '|', '【', '】', '(', ')', '（', '）', '"', '"', "'", "'"]
+        special_count = sum(1 for char in facility_name if char in special_chars)
+        if special_count > 2:
+            if debug_mode:
+                st.info(f"🔍 DEBUG: 特殊文字が多すぎます（{special_count}個）")
+            return False
+        
+        # 有効な施設名のパターンをチェック
+        valid_patterns = [
+            r'.*クリニック.*',
+            r'.*病院.*',
+            r'.*医院.*',
+            r'.*美容外科.*',
+            r'.*皮膚科.*',
+            r'.*株式会社.*',
+            r'.*有限会社.*',
+            r'.*合同会社.*',
+            r'.*法人.*',
+            r'.*グループ.*',
+            r'.*サロン.*',
+            r'.*エステ.*',
+            r'.*センター.*',
+            r'.*メディカル.*'
+        ]
+        
+        # 有効なパターンのいずれかに該当するかチェック
+        for pattern in valid_patterns:
+            if re.match(pattern, facility_name):
+                if debug_mode:
+                    st.info(f"🔍 DEBUG: 有効な施設パターンに該当: {pattern}")
+                return True
+        
+        # パターンに該当しない場合でも、短くてシンプルなら有効とする
+        if len(facility_name) <= 20 and digit_count <= 2 and special_count <= 1:
+            if debug_mode:
+                st.info("🔍 DEBUG: 短くてシンプルな名前のため有効と判定")
+            return True
+        
+        if debug_mode:
+            st.info("🔍 DEBUG: 有効な施設名パターンに該当しません")
+        return False
+    
+    def filter_valid_jobs(self, jobs_list, debug_mode=False):
+        """最終結果から無効な求人を除外"""
+        if not jobs_list:
+            return []
+        
+        filtered_jobs = []
+        excluded_reasons = {}
+        
+        for i, job in enumerate(jobs_list):
+            facility_name = job.get('facility_name', '')
+            
+            # 施設名が空の場合は除外
+            if not facility_name:
+                excluded_reasons['空の施設名'] = excluded_reasons.get('空の施設名', 0) + 1
+                if debug_mode and i < 5:  # 最初の5件のみ詳細ログ
+                    st.warning(f"🚫 求人 {i+1}: 施設名が空のため除外")
+                continue
+            
+            # 施設名の妥当性をチェック
+            if not self.is_valid_facility_name(facility_name, debug_mode=(debug_mode and i < 3)):
+                excluded_reasons['無効な施設名'] = excluded_reasons.get('無効な施設名', 0) + 1
+                if debug_mode and i < 5:  # 最初の5件のみ詳細ログ
+                    st.warning(f"🚫 求人 {i+1}: 無効な施設名のため除外 - '{facility_name}'")
+                continue
+            
+            # 有効な求人として追加
+            filtered_jobs.append(job)
+        
+        if debug_mode and excluded_reasons:
+            st.info("📊 除外理由の内訳:")
+            for reason, count in excluded_reasons.items():
+                st.info(f"  • {reason}: {count}件")
+        
+        return filtered_jobs
 
 
 class KyujinboxUI:
